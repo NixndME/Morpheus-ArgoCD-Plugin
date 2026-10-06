@@ -103,4 +103,5 @@ cd plugin
 gradle clean shadowJar test
 ```
 
-The jar is written to `plugin/build/libs/`. Tested with Morpheus 9.0.2 and Argo CD 3.5.
+The jar is written to `plugin/build/libs/`. Tested with Morpheus 9.0.2 and Argo CD 3.5, on an HKS cluster and on a
+k3s cluster added to Morpheus as an External Kubernetes Cluster.

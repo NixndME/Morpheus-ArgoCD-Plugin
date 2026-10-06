@@ -42,8 +42,10 @@ class ClusterScope {
         if (!t && cluster.id) {
             try { t = morpheus.services.cluster.get(cluster.id)?.serviceToken } catch (Throwable ignored) { }
         }
-        if (!t && cluster.serviceConfig) {
-            def m = cluster.serviceConfig =~ /(?m)^\s*token:\s*"?([^"\s]+)"?/
+        // external clusters onboarded with a kubeconfig keep it in serviceAccess
+        for (String kubeconfig : [cluster.serviceAccess, cluster.serviceConfig]) {
+            if (t || !kubeconfig) continue
+            def m = kubeconfig =~ /(?m)^\s*token:\s*"?([^"\s]+)"?/
             if (m.find()) t = m.group(1)
         }
         t
