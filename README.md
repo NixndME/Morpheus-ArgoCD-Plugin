@@ -10,6 +10,14 @@ see the Argo CD applications running on that cluster and work with them without 
 - Restart, sync or delete a single resource
 - Morpheus role permission **Argo CD Applications**: none / read / full
 
+## Walkthrough
+
+[![Walkthrough: install, configure and use the Argo CD tab](https://github.com/NixndME/Morpheus-ArgoCD-Plugin/releases/download/v0.1.28/argocd-plugin-preview.gif)](https://github.com/NixndME/Morpheus-ArgoCD-Plugin/releases/download/v0.1.28/argocd-plugin-walkthrough.mp4)
+
+The preview runs at 4x speed. [Watch the full walkthrough (MP4, about 3 minutes)](https://github.com/NixndME/Morpheus-ArgoCD-Plugin/releases/download/v0.1.28/argocd-plugin-walkthrough.mp4):
+upload the plugin, set the Argo CD URL and token, give a role access, then open a cluster and create, sync,
+explore, restart and delete an application.
+
 ## Which clusters get the tab
 
 The tab only shows on clusters where Argo CD actually manages at least one application. Names and labels are
@@ -24,7 +32,7 @@ not used for matching. The plugin proves that an Argo CD destination is the same
 1. Download `argocd-plugin.jar` from the releases page.
 2. In Morpheus go to *Administration > Integrations > Plugins* and upload it.
 3. Edit the plugin and set the Argo CD URL and an Argo CD API token.
-4. In *Administration > Roles* set **Argo CD Applications** to read or full for the roles that need it.
+4. In *Administration > Roles* open a role and set **Argo CD Applications** (in the Argo CD section) to read or full.
    System Admin gets full access automatically.
 
 To upgrade, upload the new jar over the old one. This keeps the settings and role permissions.
