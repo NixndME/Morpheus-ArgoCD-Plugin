@@ -32,23 +32,57 @@ not used for matching. The plugin proves that an Argo CD destination is the same
 
 1. Download `argocd-plugin.jar` from the releases page.
 2. In Morpheus go to *Administration > Integrations > Plugins* and upload it.
-3. Edit the plugin and set the Argo CD URL and an Argo CD API token.
+3. Edit the plugin and set the Argo CD URL and an Argo CD API token (see [Argo CD account and token](#argo-cd-account-and-token-for-morpheus)).
 4. In *Administration > Roles* open a role and set **Argo CD Applications** (in the Argo CD section) to read or full.
    System Admin gets full access automatically.
 
 To upgrade, upload the new jar over the old one. This keeps the settings and role permissions.
 Deleting the plugin and installing it again resets the permission on all roles.
 
-## Argo CD token
+## Argo CD account and token for Morpheus
 
-Create a local Argo CD account with API key access, for example in `argocd-cm`:
+Morpheus talks to Argo CD with an API token. Give it its own Argo CD account with only the rights it needs.
+
+[![Create the Argo CD account and token](https://github.com/NixndME/Morpheus-ArgoCD-Plugin/releases/download/v0.1.28/argocd-account-preview.gif)](https://github.com/NixndME/Morpheus-ArgoCD-Plugin/releases/download/v0.1.28/argocd-account-token.mp4)
+
+[Watch the whole step (MP4, about 4 minutes)](https://github.com/NixndME/Morpheus-ArgoCD-Plugin/releases/download/v0.1.28/argocd-account-token.mp4): terminal, Argo CD UI, then Morpheus.
+
+**1. Add the account** (API key only, it cannot log in to the UI). Run this where `kubectl` reaches the cluster
+that runs Argo CD:
+
+```bash
+kubectl -n argocd patch configmap argocd-cm --type merge -p '{"data":{"accounts.morpheus":"apiKey"}}'
+```
+
+**2. Give it a role.** Save this as `morpheus-rbac.yaml`:
 
 ```yaml
 data:
-  accounts.morpheus: apiKey
+  policy.csv: |
+    p, role:morpheus, applications, *, */*, allow
+    p, role:morpheus, clusters, get, *, allow
+    p, role:morpheus, projects, get, *, allow
+    p, role:morpheus, logs, get, */*, allow
+    g, morpheus, role:morpheus
 ```
 
-Give it a role in `argocd-rbac-cm` and create a token with `argocd account generate-token --account morpheus`.
+The patch replaces the whole `policy.csv`, so first copy the lines you already have into the file:
+
+```bash
+kubectl -n argocd get configmap argocd-rbac-cm -o jsonpath='{.data.policy\.csv}'
+kubectl -n argocd patch configmap argocd-rbac-cm --type merge --patch-file morpheus-rbac.yaml
+```
+
+To limit Morpheus to some projects, use `my-project/*` instead of `*/*` in the `applications` and `logs` lines.
+This role covers everything the plugin does (list, create, sync, refresh, delete, restart, logs, events) and
+nothing else: it cannot change Argo CD settings, projects or repositories.
+
+**3. Create the token.** In the Argo CD UI go to *Settings > Accounts > morpheus* and click *Generate New*.
+Leave *Expires In* empty for no expiry, or set one such as `90d`. Copy the token, Argo CD shows it only once.
+With the CLI: `argocd account generate-token --account morpheus`.
+
+**4. Use it in Morpheus.** *Administration > Integrations > Plugins*, edit **Argo CD**, paste the token into
+*Argo CD API token* and save. The Argo CD tab then shows `as morpheus` next to the connection.
 
 ## Audit
 
