@@ -14,7 +14,8 @@ see the Argo CD applications running on that cluster and work with them without 
 
 [![Walkthrough: install, configure and use the Argo CD tab](https://github.com/NixndME/Morpheus-ArgoCD-Plugin/releases/download/v0.1.28/argocd-plugin-preview.gif)](https://github.com/NixndME/Morpheus-ArgoCD-Plugin/releases/download/v0.1.28/argocd-plugin-walkthrough.mp4)
 
-The preview runs at 4x speed. [Watch the full walkthrough (MP4, about 3 minutes)](https://github.com/NixndME/Morpheus-ArgoCD-Plugin/releases/download/v0.1.28/argocd-plugin-walkthrough.mp4):
+The preview is one minute at normal speed: the Argo CD tab on a cluster and an application's resource tree.
+[Watch the full walkthrough (MP4, about 7 minutes)](https://github.com/NixndME/Morpheus-ArgoCD-Plugin/releases/download/v0.1.28/argocd-plugin-walkthrough.mp4):
 upload the plugin, set the Argo CD URL and token, give a role access, then open a cluster and create, sync,
 explore, restart and delete an application.
 
