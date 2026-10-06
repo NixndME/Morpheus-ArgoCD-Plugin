@@ -30,6 +30,14 @@
 .argocd-pop input[type=text],.argocd-pop select{background:#fff!important;color:#1f2428!important;border:1px solid #8a959f!important;height:30px}
 .argocd-pop input[type=text]::placeholder{color:#8a959f!important}
 .argocd-popbtns{display:flex;gap:8px;margin-top:10px}
+.argocd-pop-wide{width:min(1000px,94vw)}
+.argocd-pop label.argocd-field{display:block;font-size:11px;text-transform:uppercase;margin:8px 0 3px;color:#aeb7bf}
+.argocd-pop textarea{width:100%;box-sizing:border-box;min-height:64px;background:#fff!important;color:#1f2428!important;border:1px solid #8a959f!important;font:12px monospace}
+.argocd-reslist{max-height:150px;overflow:auto;border:1px solid #4a525a;border-radius:4px;padding:4px 8px;margin-top:4px}
+.argocd-diff{font:12px/1.45 monospace;white-space:pre;overflow:auto;max-height:420px;background:#1f2428;color:#d6dde2;border-radius:4px;padding:6px 0;margin:4px 0 12px}
+.argocd-diff span{display:block;padding:0 10px}.argocd-d-add{background:rgba(46,160,67,.28)}.argocd-d-del{background:rgba(248,81,73,.28)}.argocd-d-gap{color:#7d8a94}
+.argocd-age{font-size:12px}
+.argocd-inline{gap:4px;align-items:center}.argocd-num{width:56px!important;height:28px;box-sizing:border-box;padding:2px 6px;border:1px solid var(--argocd-line);border-radius:14px;background:transparent;color:inherit;text-align:center}
 .argocd-form{display:grid;grid-template-columns:repeat(2,minmax(220px,1fr));gap:10px;margin:6px 0 10px;min-width:520px}
 .argocd-form label{display:block;font-size:11px;text-transform:uppercase;color:var(--argocd-muted);margin-bottom:3px}
 .argocd-panel input[type=text],.argocd-panel select{width:100%;box-sizing:border-box;padding:4px 7px;border:1px solid var(--argocd-line);border-radius:3px;background:transparent;color:inherit}
@@ -79,6 +87,7 @@
     <span class="argocd-muted">{{argocdUrl}} · {{argocdVersion}}{{#if argocdUser}} · as {{argocdUser}}{{/if}}</span>
   {{/if}}
   <span class="argocd-spacer"></span>
+  <span class="argocd-muted argocd-age">Data from {{loadedAt}} · <a href="{{tabUrl}}">reload</a></span>
   <span class="argocd-muted">Cluster {{clusterName}} · your access: <b>{{accessLevel}}</b></span>
 </div>
 
@@ -198,11 +207,53 @@
           <form id="argocd-pop-sync-{{../index}}" popover class="argocd-pop" method="post" action="/plugin/argocd/sync">
             <input type="hidden" name="{{../../csrfParam}}" value="{{../../csrfToken}}"/>
             <input type="hidden" name="clusterId" value="{{../../clusterId}}"/><input type="hidden" name="app" value="{{name}}"/>
-            <p>Synchronize <b>{{name}}</b> to {{targetRevision}}.</p>
-            <div class="argocd-checks"><label><input type="checkbox" name="prune" value="true"/> Prune resources no longer in Git</label></div>
+            <p>Synchronize <b>{{name}}</b> · Esc to cancel</p>
+            <label class="argocd-field" for="argocd-rev-{{../index}}">Revision</label>
+            <input type="text" id="argocd-rev-{{../index}}" name="revision" placeholder="{{targetRevision}}" autocomplete="off"/>
+            <div class="argocd-checks" style="margin-top:8px">
+              <label><input type="checkbox" name="prune" value="true"/> Prune resources no longer in Git</label>
+              <label><input type="checkbox" name="dryRun" value="true"/> Dry run (show what would change, change nothing)</label>
+              <label><input type="checkbox" name="force" value="true"/> Force (replace resources that cannot be updated)</label>
+            </div>
+            {{#if resources}}<label class="argocd-field">Only these resources (none ticked = all)</label>
+            <div class="argocd-reslist">{{#each resources}}<label style="display:block;text-transform:none;font-size:12px;margin:2px 0"><input type="checkbox" name="resource" value="{{ref}}"/> {{kind}} {{name}} <span class="{{syncClass}}">{{syncStatus}}</span></label>{{/each}}</div>{{/if}}
             <div class="argocd-popbtns"><button class="btn btn-primary argocd-act" type="submit">Synchronize</button><button type="button" class="btn btn-default argocd-act" popovertarget="argocd-pop-sync-{{../index}}" popovertargetaction="hide">Cancel</button></div>
           </form>
         {{/if}}
+        <button type="button" class="btn btn-default argocd-act" popovertarget="argocd-pop-diff-{{../index}}">Diff{{#if ../hasDiffs}} ({{../diffCount}}){{/if}}</button>
+        <div id="argocd-pop-diff-{{../index}}" popover class="argocd-pop argocd-pop-wide">
+          <p><b>{{name}}</b>: running now compared with Git · <span class="argocd-d-del">&minus; running now</span> <span class="argocd-d-add">+ after sync</span></p>
+          {{#if ../hasDiffs}}{{#each ../diffs}}
+            <h4 style="margin:10px 0 2px">{{kind}} {{#if namespace}}{{namespace}}/{{/if}}{{name}}</h4>
+            <div class="argocd-diff">{{#each rows}}<span class="argocd-d-{{cls}}">{{text}}</span>{{/each}}</div>
+          {{/each}}{{else}}<p>No differences: what runs in the cluster matches Git.</p>{{/if}}
+          <div class="argocd-popbtns"><button type="button" class="btn btn-default argocd-act" popovertarget="argocd-pop-diff-{{../index}}" popovertargetaction="hide">Close</button></div>
+        </div>
+        {{#if ../../canManage}}{{#if editable}}
+          <button type="button" class="btn btn-default argocd-act" popovertarget="argocd-pop-edit-{{../index}}">Edit</button>
+          <form id="argocd-pop-edit-{{../index}}" popover class="argocd-pop" method="post" action="/plugin/argocd/edit">
+            <input type="hidden" name="{{../../csrfParam}}" value="{{../../csrfToken}}"/>
+            <input type="hidden" name="clusterId" value="{{../../clusterId}}"/><input type="hidden" name="app" value="{{name}}"/><input type="hidden" name="sourceType" value="{{sourceType}}"/>
+            <p>Edit <b>{{name}}</b> ({{sourceType}}) · Esc to cancel</p>
+            <label class="argocd-field" for="argocd-erev-{{../index}}">Target revision (branch, tag or commit)</label>
+            <input type="text" id="argocd-erev-{{../index}}" name="revision" value="{{targetRevision}}" autocomplete="off"/>
+            {{#unless chart}}<label class="argocd-field" for="argocd-epath-{{../index}}">Path</label>
+            <input type="text" id="argocd-epath-{{../index}}" name="path" value="{{path}}" autocomplete="off"/>{{/unless}}
+            {{#if isHelm}}<label class="argocd-field" for="argocd-evf-{{../index}}">Helm values files (comma separated)</label>
+            <input type="text" id="argocd-evf-{{../index}}" name="valueFiles" value="{{valueFileList}}" autocomplete="off"/>
+            <label class="argocd-field" for="argocd-ehp-{{../index}}">Helm parameters (one name=value per line, e.g. image.tag=1.2)</label>
+            <textarea id="argocd-ehp-{{../index}}" name="helmParams">{{helmParamText}}</textarea>{{/if}}
+            {{#if isKustomize}}<label class="argocd-field" for="argocd-eimg-{{../index}}">Images (one per line, e.g. nginx=nginx:1.27)</label>
+            <textarea id="argocd-eimg-{{../index}}" name="images">{{imageText}}</textarea>{{/if}}
+            <div class="argocd-checks" style="margin-top:8px">
+              <label><input type="checkbox" name="autoSync" value="true" {{#if autoSync}}checked{{/if}}/> Automatic sync</label>
+              <label><input type="checkbox" name="autoPrune" value="true" {{#if autoPrune}}checked{{/if}}/> Prune</label>
+              <label><input type="checkbox" name="selfHeal" value="true" {{#if selfHeal}}checked{{/if}}/> Self heal</label>
+            </div>
+            <p class="argocd-muted" style="margin:4px 0 0">Prune and Self heal only apply with automatic sync.</p>
+            <div class="argocd-popbtns"><button class="btn btn-primary argocd-act" type="submit">Save</button><button type="button" class="btn btn-default argocd-act" popovertarget="argocd-pop-edit-{{../index}}" popovertargetaction="hide">Cancel</button></div>
+          </form>
+        {{/if}}{{/if}}
         <form method="post" action="/plugin/argocd/refresh">
           <input type="hidden" name="{{../../csrfParam}}" value="{{../../csrfToken}}"/>
           <input type="hidden" name="clusterId" value="{{../../clusterId}}"/><input type="hidden" name="app" value="{{name}}"/>
@@ -234,7 +285,7 @@
     <div class="argocd-status">
       <div class="argocd-card"><h5>App health</h5><div class="argocd-big"><span class="{{healthClass}}">{{healthStatus}}</span></div></div>
       <div class="argocd-card"><h5>Sync status</h5><div class="argocd-big"><span class="{{syncClass}}">{{syncStatus}}</span></div>
-        <div class="argocd-muted">to {{targetRevision}}{{#if shortRevision}} ({{shortRevision}}){{/if}} · {{#if autoSync}}auto sync on{{else}}auto sync off{{/if}}</div></div>
+        <div class="argocd-muted">to {{targetRevision}}{{#if shortRevision}} ({{shortRevision}}){{/if}} · {{#if autoSync}}auto sync on{{else}}auto sync off{{/if}} · checked {{checkedAgo}}</div></div>
       <div class="argocd-card"><h5>Last sync</h5><div class="argocd-big">{{#if operationPhase}}<span class="{{#if operationFailed}}argocd-bad{{else}}argocd-ok{{/if}}">{{operationPhase}}</span>{{else}}None yet{{/if}}</div>
         <div class="argocd-muted">{{lastSyncAgo}}{{#if operationMessage}} · {{operationMessage}}{{/if}}</div></div>
       <div class="argocd-card"><h5>Source</h5><div style="word-break:break-all">{{source}}</div><div class="argocd-muted">project {{project}} · namespace {{namespace}}</div></div>
@@ -275,15 +326,24 @@
                 <input type="hidden" name="group" value="{{group}}"/><input type="hidden" name="version" value="{{version}}"/><input type="hidden" name="action" value="sync"/>
                 <button class="btn btn-default argocd-act" type="submit">Sync</button>
               </form>
-              {{#if restartable}}
+              {{#each actions}}{{#if param}}
+              <form method="post" action="/plugin/argocd/resource-action" class="argocd-inline">
+                <input type="hidden" name="{{../../../csrfParam}}" value="{{../../../csrfToken}}"/>
+                <input type="hidden" name="clusterId" value="{{../../../clusterId}}"/><input type="hidden" name="app" value="{{../appName}}"/>
+                <input type="hidden" name="kind" value="{{../kind}}"/><input type="hidden" name="name" value="{{../name}}"/><input type="hidden" name="namespace" value="{{../namespace}}"/>
+                <input type="hidden" name="group" value="{{../group}}"/><input type="hidden" name="version" value="{{../version}}"/>
+                <input type="hidden" name="action" value="run"/><input type="hidden" name="actionName" value="{{name}}"/><input type="hidden" name="paramName" value="{{param}}"/>
+                <span class="argocd-muted">{{paramLabel}}</span><input type="number" name="paramValue" min="0" max="999" required value="{{../replicas}}" aria-label="{{paramLabel}}" class="argocd-num"/>
+                <button class="btn btn-default argocd-act" type="submit" {{#if disabled}}disabled{{/if}}>{{label}}</button>
+              </form>{{else}}
               <form method="post" action="/plugin/argocd/resource-action">
-                <input type="hidden" name="{{../../csrfParam}}" value="{{../../csrfToken}}"/>
-                <input type="hidden" name="clusterId" value="{{../../clusterId}}"/><input type="hidden" name="app" value="{{appName}}"/>
-                <input type="hidden" name="kind" value="{{kind}}"/><input type="hidden" name="name" value="{{name}}"/><input type="hidden" name="namespace" value="{{namespace}}"/>
-                <input type="hidden" name="group" value="{{group}}"/><input type="hidden" name="version" value="{{version}}"/><input type="hidden" name="action" value="restart"/>
-                <button class="btn btn-default argocd-act" type="submit">Restart</button>
-              </form>
-              {{/if}}
+                <input type="hidden" name="{{../../../csrfParam}}" value="{{../../../csrfToken}}"/>
+                <input type="hidden" name="clusterId" value="{{../../../clusterId}}"/><input type="hidden" name="app" value="{{../appName}}"/>
+                <input type="hidden" name="kind" value="{{../kind}}"/><input type="hidden" name="name" value="{{../name}}"/><input type="hidden" name="namespace" value="{{../namespace}}"/>
+                <input type="hidden" name="group" value="{{../group}}"/><input type="hidden" name="version" value="{{../version}}"/>
+                <input type="hidden" name="action" value="run"/><input type="hidden" name="actionName" value="{{name}}"/>
+                <button class="btn btn-default argocd-act" type="submit" {{#if disabled}}disabled title="Not available right now"{{/if}}>{{label}}</button>
+              </form>{{/if}}{{/each}}
               <button type="button" class="button button-red argocd-act" popovertarget="{{../prefix}}-del{{index}}">Delete</button>
                 <form id="{{../prefix}}-del{{index}}" popover class="argocd-pop" method="post" action="/plugin/argocd/resource-action">
                   <input type="hidden" name="{{../../csrfParam}}" value="{{../../csrfToken}}"/>
@@ -305,6 +365,7 @@
           </tbody></table>
           {{else}}<p class="argocd-muted">No recent events.</p>{{/if}}
           {{#if isPod}}<h4>Logs <span class="argocd-muted">(last 80 lines)</span></h4><div class="argocd-pre">{{logs}}</div>{{/if}}
+          {{#if hasDiff}}<h4>Diff <span class="argocd-muted">(&minus; running now, + after sync)</span></h4><div class="argocd-diff">{{#each diffRows}}<span class="argocd-d-{{cls}}">{{text}}</span>{{/each}}</div>{{/if}}
           {{#if manifest}}<h4>Live manifest</h4><div class="argocd-pre">{{manifest}}</div>{{/if}}
         </div>
       {{/each}}
@@ -316,8 +377,19 @@
 
     {{#with app}}{{#if history}}
     <h4>History</h4>
-    <table class="table table-condensed argocd-table"><thead><tr><th>ID</th><th>Revision</th><th>Deployed</th></tr></thead><tbody>
-      {{#each history}}<tr><td>{{id}}</td><td>{{revision}}</td><td class="argocd-muted">{{deployedAgo}} · {{deployedAt}}</td></tr>{{/each}}
+    {{#if ../../canManage}}{{#if autoSync}}<p class="argocd-muted">To roll back, turn off automatic sync first (Edit), otherwise Argo CD would sync straight back to Git.</p>{{/if}}{{/if}}
+    <table class="table table-condensed argocd-table"><thead><tr><th>ID</th><th>Revision</th><th>Deployed</th><th></th></tr></thead><tbody>
+      {{#each history}}<tr><td>{{id}}</td><td>{{revision}}</td><td class="argocd-muted">{{deployedAgo}} · {{deployedAt}}</td>
+        <td>{{#if current}}<span class="argocd-muted">current</span>{{else}}{{#if ../../../canManage}}{{#unless ../autoSync}}
+          <button type="button" class="btn btn-default argocd-act" popovertarget="argocd-pop-rb-{{../../index}}-{{id}}">Roll back</button>
+          <form id="argocd-pop-rb-{{../../index}}-{{id}}" popover class="argocd-pop" method="post" action="/plugin/argocd/rollback">
+            <input type="hidden" name="{{../../../csrfParam}}" value="{{../../../csrfToken}}"/>
+            <input type="hidden" name="clusterId" value="{{../../../clusterId}}"/><input type="hidden" name="app" value="{{../name}}"/><input type="hidden" name="historyId" value="{{id}}"/>
+            <p>Roll <b>{{../name}}</b> back to history entry <b>{{id}}</b> (revision {{revision}}). Type the application name to confirm.</p>
+            <input type="text" name="confirm" required pattern="{{../confirmPattern}}" placeholder="{{../name}}" autocomplete="off"/>
+            <div class="argocd-popbtns"><button class="btn btn-primary argocd-act" type="submit">Roll back</button><button type="button" class="btn btn-default argocd-act" popovertarget="argocd-pop-rb-{{../../index}}-{{id}}" popovertargetaction="hide">Cancel</button></div>
+          </form>
+        {{/unless}}{{/if}}{{/if}}</td></tr>{{/each}}
     </tbody></table>
     {{/if}}{{/with}}
   </div>

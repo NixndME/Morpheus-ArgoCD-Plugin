@@ -46,6 +46,50 @@ class ArgoCdClient {
         call('POST', '/api/v1/applications', application)
     }
 
+    /**
+     * Sync with options: revision, dryRun, prune, force, and a subset of resources (empty = all).
+     * requestedBy shows in Argo CD's sync details, so Argo CD knows which Morpheus user asked.
+     */
+    ArgoResult syncApplication(String name, Map opts, String requestedBy) {
+        Map body = [prune: opts.prune == true, dryRun: opts.dryRun == true]
+        if (opts.revision) body.revision = opts.revision
+        if (opts.force) body.strategy = [apply: [force: true]]
+        if (opts.resources) body.resources = opts.resources
+        if (requestedBy) body.infos = [[name: 'Requested from Morpheus by', value: requestedBy]]
+        call('POST', "/api/v1/applications/${enc(name)}/sync", body)
+    }
+
+    /** Git (target/predicted) and live state of every resource, for the diff view. */
+    ArgoResult managedResources(String name) { call('GET', "/api/v1/applications/${enc(name)}/managed-resources") }
+
+    /** Read the app, let change() edit its spec, write it back (HttpURLConnection cannot send PATCH). */
+    ArgoResult updateApplication(String name, Closure change) {
+        ArgoResult cur = getApplication(name)
+        if (!cur.ok) return cur
+        Map app = cur.data as Map
+        Map md = new LinkedHashMap(app.metadata as Map)
+        md.remove('managedFields')
+        Map body = [metadata: md, spec: app.spec]
+        change.call(body.spec as Map)
+        call('PUT', "/api/v1/applications/${enc(name)}", body)
+    }
+
+    ArgoResult rollback(String name, long historyId) {
+        call('POST', "/api/v1/applications/${enc(name)}/rollback", [id: historyId, prune: false, dryRun: false])
+    }
+
+    /** Actions Argo CD offers for one resource, e.g. restart, pause, resume, scale. */
+    ArgoResult resourceActions(String app, Map ref) {
+        call('GET', "/api/v1/applications/${enc(app)}/resource/actions?" + refQuery(ref))
+    }
+
+    /** Run an action, with parameters when it takes them (scale -> replicas). */
+    ArgoResult runResourceAction(String app, Map ref, String action, Map<String, String> params) {
+        call('POST', "/api/v1/applications/${enc(app)}/resource/actions/v2", [name: app, namespace: ref.namespace ?: '',
+            resourceName: ref.name, group: ref.group ?: '', kind: ref.kind, version: ref.version ?: '', action: action,
+            resourceActionParameters: params.collect { k, v -> [name: k, value: v] }])
+    }
+
     /** requestedBy shows in Argo CD's sync details, so Argo CD knows which Morpheus user asked. */
     ArgoResult syncApplication(String name, boolean prune, String requestedBy = null) {
         Map body = [prune: prune, dryRun: false]

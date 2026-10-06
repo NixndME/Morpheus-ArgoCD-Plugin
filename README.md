@@ -7,7 +7,11 @@ see the Argo CD applications running on that cluster and work with them without 
 - Resource tree (application → service / deployment → replica set → pod) with zoom
 - Resource details: events, pod logs, live manifest
 - Create, sync, refresh, hard refresh and delete applications
-- Restart, sync or delete a single resource
+- Diff: what runs in the cluster compared with Git, per resource
+- Sync options: revision, dry run, prune, force, or only selected resources
+- Roll back to an earlier entry in History
+- Edit an application: target revision, path, Helm values files and parameters, Kustomize images, automatic sync
+- Resource actions that Argo CD offers, such as restart, pause, resume and scale; sync or delete a single resource
 - Morpheus role permission **Argo CD Applications**: none / read / full
 
 ## Walkthrough

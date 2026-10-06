@@ -12,6 +12,8 @@ class AppView {
     static final int MAX_MANIFESTS = 40
     static final int MAX_POD_LOGS = 8
     static final int LOG_TAIL = 80
+    /** Kinds that can have Argo CD resource actions (restart, scale, pause, ...). */
+    static final Set<String> ACTION_KINDS = ['Deployment', 'StatefulSet', 'DaemonSet', 'Rollout', 'CronJob', 'Job'] as Set
 
     int index
     ArgoApp app
@@ -22,6 +24,10 @@ class AppView {
     List<NodeCard> nodes = []
     Integer selectedNode
     String css = ''
+    List<Map> diffs = []      // [kind, name, namespace, rows] for each resource that differs from Git
+
+    boolean getHasDiffs() { !diffs.isEmpty() }
+    int getDiffCount() { diffs.size() }
 
     String getPrefix() { "argocd-a${index}" }
     String getRadioId() { "argocd-app-${index}" }
@@ -50,12 +56,31 @@ class AppView {
         ArgoResult ev = client.events(app.name)
         if (ev.ok) events = ((ev.data?.items ?: []) as List<Map>)
 
+        Map<String, List<Map>> diffByKey = [:]
+        ArgoResult mr = client.managedResources(app.name)
+        if (mr.ok) ((mr.data?.items ?: []) as List<Map>).each { Map it ->
+            List<Map> rows = ManifestDiff.of((it.predictedLiveState ?: it.targetState) as String, (it.normalizedLiveState ?: it.liveState) as String)
+            if (rows) {
+                v.diffs << [kind: it.kind, name: it.name, namespace: it.namespace ?: '', rows: rows]
+                diffByKey[ResourceTree.key(it.kind as String, it.namespace as String, it.name as String)] = rows
+            }
+        }
+
         int manifests = 0, logs = 0
         v.tree.all.each { ResourceTree.Node n ->
             NodeCard c = new NodeCard(index: n.index, kind: n.kind, name: n.name, namespace: n.namespace ?: '',
                 group: n.group ?: '', version: n.version ?: '', health: n.health ?: '', sync: n.sync ?: '',
                 infoItems: n.infoItems, images: n.images, isApp: n.uid == 'app', appName: app.name)
             if (!c.isApp) {
+                c.diffRows = diffByKey[ResourceTree.key(n.kind, n.namespace, n.name)] ?: []
+                if (ACTION_KINDS.contains(n.kind)) {
+                    ArgoResult ar = client.resourceActions(app.name, [kind: n.kind, name: n.name, namespace: n.namespace, group: n.group, version: n.version])
+                    if (ar.ok) c.actions = ((ar.data?.actions ?: []) as List<Map>).sort { Map a -> [(a.params ? 1 : 0), a.name].join(':') }.collect { Map a ->
+                        [name: a.name, label: NodeCard.label(a.name as String), disabled: a.disabled == true,
+                         param: ((a.params ?: []) as List<Map>).find()?.name,
+                         paramLabel: NodeCard.label(((a.params ?: []) as List<Map>).find()?.name as String), formId: "${v.prefix}-act${n.index}-${a.name}".toString()]
+                    }
+                }
                 if (manifests < MAX_MANIFESTS) {
                     // per-resource events, exactly what the Argo CD UI shows on a resource's EVENTS tab
                     ArgoResult re = client.events(app.name, [kind: n.kind, name: n.name, namespace: n.namespace, uid: n.uid])
@@ -67,7 +92,8 @@ class AppView {
                     manifests++
                     ArgoResult r = client.resource(app.name, [kind: n.kind, name: n.name, namespace: n.namespace, group: n.group, version: n.version])
                     Object m = r.ok && r.data instanceof Map ? r.data.manifest : null
-                    c.manifest = m instanceof String ? ClusterPanel.pretty(m as String) : (r.ok ? null : r.describe())
+                    c.manifest = m instanceof String ? ManifestDiff.manifestYaml(m as String) : (r.ok ? null : r.describe())
+                    if (m instanceof String) c.replicas = (ManifestDiff.parse(m as String) as Map)?.spec?.replicas as String
                 }
                 if (n.kind == 'Pod' && logs < MAX_POD_LOGS) {
                     logs++
@@ -117,6 +143,9 @@ class NodeCard {
     List<Map> events = []
     String manifest
     String logs
+    String replicas
+    List<Map> diffRows = []
+    List<Map> actions = []
 
     String getHealthClass() { ArgoApp.chip(health == 'Healthy' ? 'ok' : health == 'Progressing' ? 'info' : health in ['Degraded', 'Missing'] ? 'bad' : health == 'Suspended' ? 'warn' : 'unknown') }
     String getSyncClass() { ArgoApp.chip(sync == 'Synced' ? 'ok' : sync == 'OutOfSync' ? 'warn' : 'unknown') }
@@ -129,4 +158,8 @@ class NodeCard {
     boolean getRestartable() { ResourceTree.restartable(kind) }
     String getConfirmPattern() { (name ?: '').replace('.', '\\.') }
     String getImageList() { images.join(', ') }
+    boolean getHasDiff() { !diffRows.isEmpty() }
+    boolean getHasActions() { !actions.isEmpty() }
+
+    static String label(String action) { action ? action.split('-').collect { it.capitalize() }.join(' ') : '' }
 }

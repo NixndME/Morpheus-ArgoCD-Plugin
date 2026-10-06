@@ -22,7 +22,14 @@ class ArgoApp {
     String reconciledAt
     String lastSyncAt
     boolean autoSync
+    boolean autoPrune
+    boolean selfHeal
     boolean deleting
+    boolean multiSource
+    String sourceType      // Directory | Helm | Kustomize | Plugin
+    List<String> helmValueFiles = []
+    List<Map> helmParams = []
+    List<String> kustomizeImages = []
     Integer viewIndex
     List<ArgoResource> resources = []
     List<ArgoHistory> history = []
@@ -52,15 +59,22 @@ class ArgoApp {
             reconciledAt: st.reconciledAt,
             lastSyncAt: op.finishedAt ?: op.startedAt,
             autoSync: spec.syncPolicy?.automated != null,
-            deleting: item.metadata?.deletionTimestamp != null
+            autoPrune: spec.syncPolicy?.automated?.prune == true,
+            selfHeal: spec.syncPolicy?.automated?.selfHeal == true,
+            deleting: item.metadata?.deletionTimestamp != null,
+            multiSource: spec.sources instanceof List && !spec.source,
+            sourceType: st.sourceType ?: (src.chart || src.helm ? 'Helm' : src.kustomize ? 'Kustomize' : 'Directory'),
+            helmValueFiles: ((src.helm?.valueFiles ?: []) as List).collect { it as String },
+            helmParams: ((src.helm?.parameters ?: []) as List).collect { Map x -> [name: x.name, value: x.value] },
+            kustomizeImages: ((src.kustomize?.images ?: []) as List).collect { it as String }
         )
         (st.resources ?: []).each { Map r ->
-            a.resources << new ArgoResource(kind: r.kind, name: r.name, namespace: r.namespace,
+            a.resources << new ArgoResource(kind: r.kind, name: r.name, namespace: r.namespace, group: r.group ?: '',
                 syncStatus: r.status ?: 'Unknown', healthStatus: r.health?.status ?: '')
         }
-        ((st.history ?: []) as List).reverse().take(10).each { Map h ->
+        ((st.history ?: []) as List).reverse().take(10).eachWithIndex { Map h, int i ->
             a.history << new ArgoHistory(id: h.id as String, revision: shortRev(h.revision as String),
-                deployedAt: h.deployedAt as String, deployedAgo: ago(h.deployedAt as String))
+                deployedAt: h.deployedAt as String, deployedAgo: ago(h.deployedAt as String), current: i == 0)
         }
         (st.conditions ?: []).each { Map c -> a.conditions << "${c.type}: ${c.message}".toString() }
         return a
@@ -68,6 +82,13 @@ class ArgoApp {
 
     // ---- display helpers (Handlebars cannot compute) ----
     boolean getHasView() { viewIndex != null }
+    String getCheckedAgo() { ago(reconciledAt) ?: 'not yet' }
+    boolean getIsHelm() { sourceType == 'Helm' }
+    boolean getIsKustomize() { sourceType == 'Kustomize' }
+    boolean getEditable() { !multiSource }
+    String getValueFileList() { helmValueFiles.join(', ') }
+    String getHelmParamText() { helmParams.collect { "${it.name}=${it.value}" }.join('\n') }
+    String getImageText() { kustomizeImages.join('\n') }
     String getSource() { chart ? "${repoUrl} (chart ${chart})" : "${repoUrl}${path ? ' / ' + path : ''}" }
     String getShortRevision() { shortRev(revision) }
     String getLastSyncAgo() { ago(lastSyncAt) ?: 'never' }
@@ -107,11 +128,14 @@ class ArgoApp {
 }
 
 class ArgoResource {
+    String group
     String kind
     String name
     String namespace
     String syncStatus
     String healthStatus
+    /** Value used by the selective-sync checkboxes: group/kind/namespace/name. */
+    String getRef() { "${group ?: ''}/${kind}/${namespace ?: ''}/${name}" }
     String getSyncClass() { ArgoApp.chip(syncStatus == 'Synced' ? 'ok' : syncStatus == 'OutOfSync' ? 'warn' : 'unknown') }
     String getHealthClass() {
         healthStatus == 'Healthy' ? ArgoApp.chip('ok') : healthStatus == 'Progressing' ? ArgoApp.chip('info') :
@@ -124,4 +148,5 @@ class ArgoHistory {
     String revision
     String deployedAt
     String deployedAgo
+    boolean current
 }

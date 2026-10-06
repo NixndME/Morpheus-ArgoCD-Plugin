@@ -21,6 +21,8 @@ import groovy.util.logging.Slf4j
 class ArgoCdController implements PluginController {
 
     static final String NAME_RE = /^[a-z0-9]([-a-z0-9.]{0,251}[a-z0-9])?$/
+    static final String REV_RE = /^[\w.\/-]{1,200}$/
+    static final String PATH_RE = /^[\w.\/-]{1,300}$/
 
     Plugin plugin
     MorpheusContext morpheus
@@ -54,7 +56,9 @@ class ArgoCdController implements PluginController {
             Route.build('/argocd/sync', 'sync', full),
             Route.build('/argocd/delete', 'delete', full),
             Route.build('/argocd/create', 'create', full),
-            Route.build('/argocd/resource-action', 'resourceAction', full)
+            Route.build('/argocd/resource-action', 'resourceAction', full),
+            Route.build('/argocd/edit', 'edit', full),
+            Route.build('/argocd/rollback', 'rollback', full)
         ]
     }
 
@@ -110,8 +114,71 @@ class ArgoCdController implements PluginController {
 
     def sync(ViewModel<Map> model) {
         act(model, true) { ArgoCdClient c, Map p ->
-            ArgoResult r = c.syncApplication(p.app, p.prune == 'true', model.user?.username)
-            r.ok ? ok("Sync started for ${p.app}${p.prune == 'true' ? ' (with prune)' : ''}. Refresh to follow progress.") : r
+            if (p.revision && !(p.revision ==~ REV_RE)) return fail('A revision may only contain letters, digits and . _ - /')
+            List<Map> resources = values(model, 'resource').collect { String r ->
+                String[] x = r.split('/', 4)
+                x.length == 4 ? [group: x[0], kind: x[1], namespace: x[2], name: x[3]] : null
+            }.findAll()
+            Map opts = [revision: p.revision, prune: p.prune == 'true', dryRun: p.dryRun == 'true', force: p.force == 'true', resources: resources]
+            long started = System.currentTimeMillis()
+            ArgoResult r = c.syncApplication(p.app, opts, model.user?.username)
+            if (!r.ok) return r
+            if (opts.dryRun) return dryRunResult(c, p.app, started)
+            String what = resources ? "${resources.size()} resource(s) of ${p.app}" : p.app
+            ok("Sync started for ${what}${opts.revision ? ' at ' + opts.revision : ''}${opts.prune ? ', with prune' : ''}${opts.force ? ', forced' : ''}. Refresh to follow progress.")
+        }
+    }
+
+    /** Wait briefly for the dry run and say what would change. */
+    private Map dryRunResult(ArgoCdClient c, String app, long started) {
+        for (int i = 0; i < 24; i++) {
+            sleep(500)
+            Map op = c.getApplication(app).data?.status?.operationState as Map
+            boolean ours = op?.operation?.sync?.dryRun == true && op.startedAt &&
+                java.time.Instant.parse(op.startedAt as String).toEpochMilli() >= started - 2000
+            if (!ours || !(op.phase in ['Succeeded', 'Failed', 'Error'])) continue
+            if (op.phase != 'Succeeded') return fail("Dry run failed: ${op.message}")
+            List rs = ((op.syncResult?.resources ?: []) as List<Map>).findAll { it.message && !(it.message as String).contains('unchanged') }
+            return info(rs ? 'Dry run, nothing was changed. Would apply: ' + rs.collect { "${it.kind} ${it.name} (${(it.message as String).replace(' (dry run)', '')})" }.join('; ') + '.'
+                         : 'Dry run, nothing was changed: everything is already in sync.')
+        }
+        info('Dry run started. Argo CD has not finished it yet; Refresh to see the result.')
+    }
+
+    /** Change the source (revision, path, Helm values and parameters, Kustomize images) and the sync policy. */
+    def edit(ViewModel<Map> model) {
+        act(model, true) { ArgoCdClient c, Map p ->
+            if (p.revision && !(p.revision ==~ REV_RE)) return fail('A revision may only contain letters, digits and . _ - /')
+            if (p.path && !(p.path ==~ PATH_RE)) return fail('The path may only contain letters, digits and . _ - /')
+            List<String> valueFiles = (p.valueFiles ?: '').split(',')*.trim().findAll() as List<String>
+            List<Map> helmParams = lines(p.helmParams).collect { String l ->
+                int i = l.indexOf('=')
+                i > 0 ? [name: l.substring(0, i).trim(), value: l.substring(i + 1).trim()] : null
+            }
+            if (helmParams.contains(null)) return fail('Helm parameters must be one name=value per line.')
+            List<String> images = lines(p.images)
+            ArgoResult r = c.updateApplication(p.app) { Map spec ->
+                if (!(spec.source instanceof Map)) throw new IllegalStateException('only single-source applications can be edited here')
+                Map src = spec.source as Map
+                if (p.revision) src.targetRevision = p.revision
+                if (p.path && !src.chart) src.path = p.path
+                if (p.sourceType == 'Helm') src.helm = ((src.helm ?: [:]) as Map) + [valueFiles: valueFiles, parameters: helmParams]
+                if (p.sourceType == 'Kustomize') src.kustomize = ((src.kustomize ?: [:]) as Map) + [images: images]
+                Map policy = (spec.syncPolicy ?: [:]) as Map
+                if (p.autoSync == 'true') policy.automated = [prune: p.autoPrune == 'true', selfHeal: p.selfHeal == 'true']
+                else policy.remove('automated')
+                spec.syncPolicy = policy
+            }
+            r.ok ? ok("Saved ${p.app}.${p.autoSync == 'true' ? ' Argo CD syncs it automatically.' : ' Press Sync to apply the change.'}") : r
+        }
+    }
+
+    def rollback(ViewModel<Map> model) {
+        act(model, true) { ArgoCdClient c, Map p ->
+            if (p.confirm != p.app) return fail('Type the application name exactly to roll back.')
+            if (!(p.historyId ==~ /\d{1,9}/)) return fail('Choose a history entry to roll back to.')
+            ArgoResult r = c.rollback(p.app, p.historyId as long)
+            r.ok ? ok("Rolling ${p.app} back to history entry ${p.historyId}. Refresh to follow progress.") : r
         }
     }
 
@@ -161,6 +228,16 @@ class ArgoCdController implements PluginController {
                     if (!ResourceTree.restartable(p.kind)) return fail("${p.kind} cannot be restarted.")
                     ArgoResult r = c.runResourceAction(p.app, ref, 'restart')
                     return r.ok ? ok("Restart requested for ${label}.") : r
+                case 'run':
+                    if (!(p.actionName ==~ /[a-z0-9-]{1,40}/)) return fail('Unknown action.')
+                    Map<String, String> args = [:]
+                    if (p.paramName) {
+                        if (!(p.paramValue ==~ /[\w.-]{1,64}/)) return fail("Enter a value for ${p.paramName}.")
+                        args[p.paramName as String] = p.paramValue as String
+                    }
+                    ArgoResult r = c.runResourceAction(p.app, ref, p.actionName as String, args)
+                    String detail = args ? ' (' + args.collect { k, v -> "${k} ${v}" }.join(', ') + ')' : ''
+                    return r.ok ? ok("${NodeCard.label(p.actionName as String)} requested for ${label}${detail}.") : r
                 case 'sync':
                     ArgoResult r = c.syncResource(p.app, ref)
                     return r.ok ? ok("Sync started for ${label}.") : r
@@ -246,6 +323,8 @@ class ArgoCdController implements PluginController {
 
     private static Map ok(String m) { [level: 'success', message: m] }
 
+    private static Map info(String m) { [level: 'info', message: m] }
+
     private static Map fail(String m) { [level: 'danger', message: m] }
 
     private HTMLResponse flashBack(User user, Long clusterId, String level, String message, ViewModel model = null) {
@@ -266,6 +345,13 @@ class ArgoCdController implements PluginController {
         HTMLResponse.success("<!doctype html><html><head><meta http-equiv=\"refresh\" content=\"0;url=${url}\">" +
             "<title>Argo CD</title></head><body><a href=\"${url}\">Back to Argo CD</a></body></html>")
     }
+
+    /** Every value of a repeated form field (checkbox lists). */
+    private static List<String> values(ViewModel<Map> model, String name) {
+        try { ((model.request?.parameterMap?.get(name) ?: []) as List).collect { (it as String).trim() }.findAll() } catch (Throwable ignored) { [] }
+    }
+
+    private static List<String> lines(String text) { (text ?: '').readLines()*.trim().findAll() as List<String> }
 
     private static Map params(ViewModel<Map> model) {
         Map out = [:]

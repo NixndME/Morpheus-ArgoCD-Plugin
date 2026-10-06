@@ -18,6 +18,8 @@ class ClusterPanel {
     String clusterName
     String clusterApiUrl
     String tabUrl
+    /** When this page's data was read; the page cannot update itself (no JavaScript). */
+    String loadedAt = java.time.ZonedDateTime.now(java.time.ZoneOffset.UTC).format(java.time.format.DateTimeFormatter.ofPattern('HH:mm:ss')) + ' UTC'
     boolean canRead
     boolean canManage
     String accessLevel
