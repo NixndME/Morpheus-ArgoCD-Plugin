@@ -1,0 +1,327 @@
+<div class="argocd-panel" id="argocd-top">
+<style>
+.argocd-panel{--argocd-ok:#2e9e6a;--argocd-warn:#d4a017;--argocd-bad:#d0464f;--argocd-info:#2f7fc1;--argocd-muted:#7d8a94;--argocd-line:rgba(125,138,148,.35);--argocd-card:rgba(125,138,148,.06);--argocd-accent:#2f7fc1;max-width:100%;overflow-x:hidden}
+.argocd-panel h3{margin:18px 0 8px;font-size:15px}
+.argocd-panel h4{margin:14px 0 6px;font-size:13px;font-weight:600}
+.argocd-panel>input[type=radio],.argocd-view>input[type=radio]{position:absolute;opacity:0;pointer-events:none;width:0;height:0}
+.argocd-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 0}
+.argocd-logo{font-weight:600;font-size:15px}
+.argocd-muted{color:var(--argocd-muted)}
+.argocd-spacer{flex:1}
+.argocd-flash{margin:8px 0}
+.argocd-empty{padding:16px;border:1px dashed var(--argocd-line);border-radius:4px;margin:12px 0}
+.argocd-chip{display:inline-block;padding:1px 7px;border-radius:3px;font-size:11px;font-weight:600;color:#fff;white-space:nowrap}
+.argocd-chip-ok{background:var(--argocd-ok)}.argocd-chip-warn{background:var(--argocd-warn)}.argocd-chip-bad{background:var(--argocd-bad)}.argocd-chip-info{background:var(--argocd-info)}.argocd-chip-unknown{background:var(--argocd-muted)}
+.argocd-summary{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+.argocd-stat{padding:6px 12px;border:1px solid var(--argocd-line);border-radius:4px;min-width:96px}
+.argocd-stat b{display:block;font-size:18px}
+.argocd-table td,.argocd-table th{vertical-align:middle!important}
+.argocd-table th{white-space:nowrap}
+.argocd-actions{display:flex;gap:6px;align-items:center;flex-wrap:nowrap}
+.argocd-actions form:not([popover]){margin:0;display:flex}
+.argocd-panel .argocd-act{display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;width:92px;height:28px;padding:0 6px;margin:0;font-size:12px;line-height:1;text-transform:none;white-space:nowrap;cursor:pointer}
+.argocd-panel .argocd-act-wide{width:140px}
+.argocd-panel h3,.argocd-panel h4{text-transform:none}
+.argocd-tag{display:block;white-space:nowrap;font-size:11px}
+.argocd-match{margin:0 0 6px}
+.argocd-pop{position:fixed;inset:0;margin:auto;width:min(560px,92vw);height:fit-content;max-height:90vh;overflow:auto;box-sizing:border-box;padding:12px;border:1px solid var(--argocd-line);border-radius:4px;background:var(--argocd-popbg,#2b3036);color:#e6eaee;box-shadow:0 6px 18px rgba(0,0,0,.35)}
+.argocd-pop p{margin:0 0 8px}
+.argocd-pop::backdrop{background:rgba(0,0,0,.4)}
+.argocd-pop input[type=text],.argocd-pop select{background:#fff!important;color:#1f2428!important;border:1px solid #8a959f!important;height:30px}
+.argocd-pop input[type=text]::placeholder{color:#8a959f!important}
+.argocd-popbtns{display:flex;gap:8px;margin-top:10px}
+.argocd-form{display:grid;grid-template-columns:repeat(2,minmax(220px,1fr));gap:10px;margin:6px 0 10px;min-width:520px}
+.argocd-form label{display:block;font-size:11px;text-transform:uppercase;color:var(--argocd-muted);margin-bottom:3px}
+.argocd-panel input[type=text],.argocd-panel select{width:100%;box-sizing:border-box;padding:4px 7px;border:1px solid var(--argocd-line);border-radius:3px;background:transparent;color:inherit}
+.argocd-panel select option{color:#222}
+.argocd-checks label{display:inline-block;margin:0 12px 6px 0;font-weight:normal}
+.argocd-status{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin:10px 0}
+.argocd-card{padding:10px 12px;border:1px solid var(--argocd-line);border-radius:4px}
+.argocd-card h5{margin:0 0 6px;font-size:11px;letter-spacing:.05em;color:var(--argocd-muted);text-transform:uppercase}
+.argocd-big{font-size:15px;font-weight:600}
+.argocd-ok{color:var(--argocd-ok)}.argocd-bad{color:var(--argocd-bad)}.argocd-warn{color:var(--argocd-warn)}
+.argocd-cond{margin:6px 0;padding:6px 10px;border-left:3px solid var(--argocd-bad)}
+.argocd-appview{display:none;margin-top:16px;padding-top:6px;border-top:1px solid var(--argocd-line)}
+.argocd-cell{display:block;margin:0;font-weight:normal;cursor:pointer}.argocd-shut{display:none}.argocd-row-click:hover td{background:rgba(47,127,193,.07)}.argocd-row-click b{color:var(--argocd-accent);white-space:nowrap}.argocd-title{margin:0;cursor:pointer;font-weight:normal}.argocd-panel .argocd-node.argocd-node-off{display:none}
+.argocd-zoombar{display:flex;gap:4px;align-items:center;margin:8px 0 6px;flex-wrap:wrap}
+.argocd-zoombar label{margin:0;display:inline-flex;align-items:center;justify-content:center;width:46px;height:24px;border:1px solid var(--argocd-line);border-radius:3px;cursor:pointer;font-weight:normal;font-size:12px}
+.argocd-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;margin-left:10px}
+.argocd-sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.argocd-sw-ok{background:var(--argocd-ok)}.argocd-sw-info{background:var(--argocd-info)}.argocd-sw-warn{background:var(--argocd-warn)}.argocd-sw-bad{background:var(--argocd-bad)}
+.argocd-canvas{overflow:auto;max-height:620px;border:1px solid var(--argocd-line);border-radius:4px;padding:4px}
+.argocd-stage{position:relative}
+.argocd-edges{position:absolute;left:0;top:0;color:inherit}
+.argocd-edge{fill:none;stroke:currentColor;stroke-opacity:.35;stroke-width:1.3}
+.argocd-node{position:absolute;box-sizing:border-box;width:260px;height:66px;margin:0;display:flex;align-items:stretch;gap:8px;padding:6px 8px 6px 6px;border:1px solid var(--argocd-line);border-left:5px solid var(--argocd-muted);border-radius:5px;background:rgba(125,138,148,.08);cursor:pointer;font-weight:normal;overflow:hidden}
+.argocd-node:hover{border-color:var(--argocd-accent)}
+.argocd-hn-healthy{border-left-color:var(--argocd-ok)}.argocd-hn-progressing{border-left-color:var(--argocd-info)}.argocd-hn-degraded,.argocd-hn-missing{border-left-color:var(--argocd-bad)}.argocd-hn-suspended{border-left-color:#766f94}
+.argocd-sn-outofsync{border-style:dashed;border-left-style:solid}
+.argocd-node-failed{border-color:var(--argocd-bad)}
+.argocd-node-app{background:rgba(47,127,193,.10)}
+.argocd-kind{flex:0 0 40px;align-self:center;text-align:center;font-size:10px;font-weight:600;padding:3px 0;border-radius:3px;background:rgba(125,138,148,.18)}
+.argocd-node-main{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center}
+.argocd-node-name{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.argocd-node-kind,.argocd-node-detail{font-size:10.5px;opacity:.7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.argocd-node-detail{display:none}
+.argocd-node-status{flex:0 0 auto;display:flex;flex-direction:column;justify-content:center;align-items:flex-end;font-size:10.5px;font-weight:600}
+.argocd-t-healthy,.argocd-t-synced{color:var(--argocd-ok)}.argocd-t-progressing{color:var(--argocd-info)}.argocd-t-degraded,.argocd-t-missing{color:var(--argocd-bad)}.argocd-t-outofsync,.argocd-t-suspended{color:var(--argocd-warn)}.argocd-t-unknown{color:var(--argocd-muted)}
+.argocd-nodecard{display:none;margin-top:12px;padding:12px;border:1px solid var(--argocd-line);border-left:3px solid var(--argocd-accent);border-radius:4px}
+.argocd-kv{display:grid;grid-template-columns:160px 1fr;gap:4px 12px;font-size:12px;margin:6px 0}
+.argocd-kv span:nth-child(odd){color:var(--argocd-muted)}
+.argocd-pre{max-width:100%;box-sizing:border-box;max-height:340px;overflow:auto;font-size:11px;line-height:1.4;padding:10px;border-radius:4px;background:#1f2428;color:#d6dde2;white-space:pre}
+{{{panelCss}}}
+</style>
+
+<div class="argocd-bar">
+  <span class="argocd-logo">Argo CD</span>
+  {{#if isOk}}
+    <span class="argocd-chip argocd-chip-ok">Connected</span>
+    <span class="argocd-muted">{{argocdUrl}} · {{argocdVersion}}{{#if argocdUser}} · as {{argocdUser}}{{/if}}</span>
+  {{/if}}
+  <span class="argocd-spacer"></span>
+  <span class="argocd-muted">Cluster {{clusterName}} · your access: <b>{{accessLevel}}</b></span>
+</div>
+
+{{#if hasFlash}}<div class="alert alert-{{flashLevel}} argocd-flash">{{flashMessage}}</div>{{/if}}
+
+{{#if notConfigured}}
+  <div class="argocd-empty">
+    <h3>Connect Argo CD</h3>
+    <p>This plugin is not connected to an Argo CD server yet. An administrator sets the Argo CD URL and an API token under
+      <b>Administration &rsaquo; Integrations &rsaquo; Plugins &rsaquo; Argo CD</b>.</p>
+    <p class="argocd-muted">Create the token in Argo CD for an account with the apiKey capability:
+      <code>argocd account generate-token --account &lt;name&gt;</code></p>
+  </div>
+{{/if}}
+
+{{#if hasError}}<div class="argocd-empty"><h3 class="argocd-bad">Argo CD is not available</h3><p>{{stateMessage}}</p></div>{{/if}}
+
+{{#if isOk}}
+  <input type="radio" name="argocd-app" id="argocd-app-none" {{#if noAppOpen}}checked{{/if}}/>
+  {{#each appViews}}<input type="radio" name="argocd-app" id="{{radioId}}" {{#if open}}checked{{/if}}/>{{/each}}
+
+  <div class="argocd-list">
+    <div class="argocd-summary">
+      <div class="argocd-stat"><span class="argocd-muted">Applications</span><b>{{total}}</b></div>
+      <div class="argocd-stat"><span class="argocd-muted">Synced</span><b class="argocd-ok">{{synced}}</b></div>
+      <div class="argocd-stat"><span class="argocd-muted">OutOfSync</span><b class="argocd-warn">{{outOfSync}}</b></div>
+      <div class="argocd-stat"><span class="argocd-muted">Healthy</span><b class="argocd-ok">{{healthy}}</b></div>
+      <div class="argocd-stat"><span class="argocd-muted">Progressing</span><b>{{progressing}}</b></div>
+      <div class="argocd-stat"><span class="argocd-muted">Degraded</span><b class="argocd-bad">{{degraded}}</b></div>
+    </div>
+
+    <div class="argocd-bar">
+      <b>Applications on this cluster</b>
+      <span class="argocd-spacer"></span>
+      {{#if canCreate}}
+      <button type="button" class="btn btn-primary argocd-act argocd-act-wide" popovertarget="argocd-pop-new">New application</button>
+        <form id="argocd-pop-new" popover class="argocd-pop" method="post" action="/plugin/argocd/create">
+          <p><b>New application</b> · Esc to cancel</p>
+          <input type="hidden" name="{{csrfParam}}" value="{{csrfToken}}"/>
+          <input type="hidden" name="clusterId" value="{{clusterId}}"/>
+          <div class="argocd-form">
+            <div><label for="argocd-app">Application name</label><input type="text" id="argocd-app" name="app" required pattern="[a-z0-9]([\-a-z0-9.]*[a-z0-9])?" placeholder="guestbook"/></div>
+            <div><label for="argocd-project">Project</label><select id="argocd-project" name="project">{{#each projects}}<option value="{{this}}">{{this}}</option>{{/each}}</select></div>
+            <div><label for="argocd-repo">Repository URL</label><input type="text" id="argocd-repo" name="repoUrl" required placeholder="https://github.com/argoproj/argocd-example-apps.git"/></div>
+            <div><label for="argocd-rev">Revision</label><input type="text" id="argocd-rev" name="revision" value="HEAD"/></div>
+            <div><label for="argocd-path">Path</label><input type="text" id="argocd-path" name="path" placeholder="guestbook"/></div>
+            <div><label for="argocd-chart">Helm chart (instead of path)</label><input type="text" id="argocd-chart" name="chart"/></div>
+            <div><label for="argocd-ns">Destination namespace</label><input type="text" id="argocd-ns" name="namespace" required pattern="[a-z0-9]([\-a-z0-9]*[a-z0-9])?" placeholder="guestbook"/></div>
+            <div><label for="argocd-dest">Destination cluster</label><select id="argocd-dest" name="server">{{#each newAppServers}}<option value="{{server}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}</select></div>
+          </div>
+          <div class="argocd-checks">
+            <label><input type="checkbox" name="createNamespace" value="true" checked/> Auto-create namespace</label>
+            <label><input type="checkbox" name="autoSync" value="true"/> Automatic sync</label>
+            <label><input type="checkbox" name="autoPrune" value="true"/> Prune</label>
+            <label><input type="checkbox" name="selfHeal" value="true"/> Self heal</label>
+          </div>
+          <div class="argocd-popbtns"><button type="submit" class="btn btn-primary argocd-act">Create</button><button type="button" class="btn btn-default argocd-act" popovertarget="argocd-pop-new" popovertargetaction="hide">Cancel</button></div>
+        </form>
+      {{/if}}
+    </div>
+    <p class="argocd-muted argocd-match">{{matchText}}{{#if otherClusterApps}} · {{otherClusterApps}} other Argo CD app(s) deploy elsewhere{{/if}}</p>
+    {{#unless canCreate}}{{#if newAppBlockedReason}}<p class="argocd-muted">{{newAppBlockedReason}}</p>{{/if}}{{/unless}}
+
+    {{#if hasApps}}
+    <table class="table table-condensed argocd-table">
+      <thead><tr><th>Application</th><th>Project</th><th>Source</th><th>Namespace</th><th>Sync</th><th>Health</th><th>Last sync</th><th></th></tr></thead>
+      <tbody>
+      {{#each apps}}
+        <tr class="argocd-row-{{viewIndex}}{{#if hasView}} argocd-row-click{{/if}}" title="Click to open or close {{name}}">
+          <td>{{#if hasView}}<label for="argocd-app-{{viewIndex}}" class="argocd-cell argocd-open-{{viewIndex}}">{{#if hasView}}<b>{{name}}</b>{{else}}{{name}}{{/if}}{{#if autoSync}} <span class="argocd-muted argocd-tag">auto-sync</span>{{/if}}</label><label for="argocd-app-none" class="argocd-cell argocd-shut argocd-shut-{{viewIndex}}">{{#if hasView}}<b>{{name}}</b>{{else}}{{name}}{{/if}}{{#if autoSync}} <span class="argocd-muted argocd-tag">auto-sync</span>{{/if}}</label>{{else}}<a href="/plugin/argocd/select?clusterId={{../clusterId}}&amp;app={{name}}">{{#if hasView}}<b>{{name}}</b>{{else}}{{name}}{{/if}}{{#if autoSync}} <span class="argocd-muted argocd-tag">auto-sync</span>{{/if}}</a>{{/if}}</td>
+          <td>{{#if hasView}}<label for="argocd-app-{{viewIndex}}" class="argocd-cell argocd-open-{{viewIndex}}">{{project}}</label><label for="argocd-app-none" class="argocd-cell argocd-shut argocd-shut-{{viewIndex}}">{{project}}</label>{{else}}<a href="/plugin/argocd/select?clusterId={{../clusterId}}&amp;app={{name}}">{{project}}</a>{{/if}}</td>
+          <td class="argocd-muted">{{#if hasView}}<label for="argocd-app-{{viewIndex}}" class="argocd-cell argocd-open-{{viewIndex}}">{{source}} @ {{targetRevision}}</label><label for="argocd-app-none" class="argocd-cell argocd-shut argocd-shut-{{viewIndex}}">{{source}} @ {{targetRevision}}</label>{{else}}<a href="/plugin/argocd/select?clusterId={{../clusterId}}&amp;app={{name}}">{{source}} @ {{targetRevision}}</a>{{/if}}</td>
+          <td>{{#if hasView}}<label for="argocd-app-{{viewIndex}}" class="argocd-cell argocd-open-{{viewIndex}}">{{namespace}}</label><label for="argocd-app-none" class="argocd-cell argocd-shut argocd-shut-{{viewIndex}}">{{namespace}}</label>{{else}}<a href="/plugin/argocd/select?clusterId={{../clusterId}}&amp;app={{name}}">{{namespace}}</a>{{/if}}</td>
+          <td>{{#if hasView}}<label for="argocd-app-{{viewIndex}}" class="argocd-cell argocd-open-{{viewIndex}}"><span class="{{syncClass}}">{{syncStatus}}</span> <span class="argocd-muted">{{shortRevision}}</span></label><label for="argocd-app-none" class="argocd-cell argocd-shut argocd-shut-{{viewIndex}}"><span class="{{syncClass}}">{{syncStatus}}</span> <span class="argocd-muted">{{shortRevision}}</span></label>{{else}}<a href="/plugin/argocd/select?clusterId={{../clusterId}}&amp;app={{name}}"><span class="{{syncClass}}">{{syncStatus}}</span> <span class="argocd-muted">{{shortRevision}}</span></a>{{/if}}</td>
+          <td>{{#if hasView}}<label for="argocd-app-{{viewIndex}}" class="argocd-cell argocd-open-{{viewIndex}}"><span class="{{healthClass}}">{{healthStatus}}</span></label><label for="argocd-app-none" class="argocd-cell argocd-shut argocd-shut-{{viewIndex}}"><span class="{{healthClass}}">{{healthStatus}}</span></label>{{else}}<a href="/plugin/argocd/select?clusterId={{../clusterId}}&amp;app={{name}}"><span class="{{healthClass}}">{{healthStatus}}</span></a>{{/if}}</td>
+          <td class="argocd-muted">{{#if hasView}}<label for="argocd-app-{{viewIndex}}" class="argocd-cell argocd-open-{{viewIndex}}">{{lastSyncAgo}}{{#if operationFailed}} <span class="argocd-chip argocd-chip-bad">{{operationPhase}}</span>{{/if}}{{#if operationRunning}} <span class="argocd-chip argocd-chip-info">{{operationPhase}}</span>{{/if}}</label><label for="argocd-app-none" class="argocd-cell argocd-shut argocd-shut-{{viewIndex}}">{{lastSyncAgo}}{{#if operationFailed}} <span class="argocd-chip argocd-chip-bad">{{operationPhase}}</span>{{/if}}{{#if operationRunning}} <span class="argocd-chip argocd-chip-info">{{operationPhase}}</span>{{/if}}</label>{{else}}<a href="/plugin/argocd/select?clusterId={{../clusterId}}&amp;app={{name}}">{{lastSyncAgo}}{{#if operationFailed}} <span class="argocd-chip argocd-chip-bad">{{operationPhase}}</span>{{/if}}{{#if operationRunning}} <span class="argocd-chip argocd-chip-info">{{operationPhase}}</span>{{/if}}</a>{{/if}}</td>
+          <td>
+            {{#if deleting}}<span class="argocd-chip argocd-chip-bad">Deleting</span>{{else}}
+            <div class="argocd-actions">
+              {{#if ../canManage}}
+              <form method="post" action="/plugin/argocd/sync">
+                <input type="hidden" name="{{../csrfParam}}" value="{{../csrfToken}}"/>
+                <input type="hidden" name="clusterId" value="{{../clusterId}}"/><input type="hidden" name="app" value="{{name}}"/>
+                <button class="btn btn-default argocd-act" type="submit">Sync</button>
+              </form>
+              {{/if}}
+              <form method="post" action="/plugin/argocd/refresh">
+                <input type="hidden" name="{{../csrfParam}}" value="{{../csrfToken}}"/>
+                <input type="hidden" name="clusterId" value="{{../clusterId}}"/><input type="hidden" name="app" value="{{name}}"/>
+                <button class="btn btn-default argocd-act" type="submit">Refresh</button>
+              </form>
+            </div>
+            {{/if}}
+          </td>
+        </tr>
+      {{/each}}
+      </tbody>
+    </table>
+    {{else}}
+    <div class="argocd-empty">No Argo CD applications deploy to this cluster yet.{{#if canCreate}} Use <b>New application</b> to create one.{{/if}}</div>
+    {{/if}}
+  </div>
+
+  <div class="argocd-appviews">
+  {{#each appViews}}
+  <div class="argocd-appview argocd-appview-{{index}}">
+    {{#with app}}
+    <div class="argocd-bar">
+      <label for="argocd-app-none" class="argocd-title" title="Click to close"><h3 style="margin:0">{{name}}</h3></label>
+      <span class="{{healthClass}}">{{healthStatus}}</span><span class="{{syncClass}}">{{syncStatus}}</span>
+      {{#if deleting}}<span class="argocd-chip argocd-chip-bad">Deleting</span>{{/if}}
+      <span class="argocd-spacer"></span>
+      {{#unless deleting}}
+      <div class="argocd-actions">
+        {{#if ../../canManage}}
+          <button type="button" class="btn btn-primary argocd-act" popovertarget="argocd-pop-sync-{{../index}}">Sync</button>
+          <form id="argocd-pop-sync-{{../index}}" popover class="argocd-pop" method="post" action="/plugin/argocd/sync">
+            <input type="hidden" name="{{../../csrfParam}}" value="{{../../csrfToken}}"/>
+            <input type="hidden" name="clusterId" value="{{../../clusterId}}"/><input type="hidden" name="app" value="{{name}}"/>
+            <p>Synchronize <b>{{name}}</b> to {{targetRevision}}.</p>
+            <div class="argocd-checks"><label><input type="checkbox" name="prune" value="true"/> Prune resources no longer in Git</label></div>
+            <div class="argocd-popbtns"><button class="btn btn-primary argocd-act" type="submit">Synchronize</button><button type="button" class="btn btn-default argocd-act" popovertarget="argocd-pop-sync-{{../index}}" popovertargetaction="hide">Cancel</button></div>
+          </form>
+        {{/if}}
+        <form method="post" action="/plugin/argocd/refresh">
+          <input type="hidden" name="{{../../csrfParam}}" value="{{../../csrfToken}}"/>
+          <input type="hidden" name="clusterId" value="{{../../clusterId}}"/><input type="hidden" name="app" value="{{name}}"/>
+          <button class="btn btn-default argocd-act" type="submit">Refresh</button>
+        </form>
+        <form method="post" action="/plugin/argocd/refresh">
+          <input type="hidden" name="{{../../csrfParam}}" value="{{../../csrfToken}}"/>
+          <input type="hidden" name="clusterId" value="{{../../clusterId}}"/><input type="hidden" name="app" value="{{name}}"/><input type="hidden" name="hard" value="true"/>
+          <button class="btn btn-default argocd-act" type="submit">Hard refresh</button>
+        </form>
+        {{#if ../../canManage}}
+          <button type="button" class="button button-red argocd-act" popovertarget="argocd-pop-del-{{../index}}">Delete</button>
+          <form id="argocd-pop-del-{{../index}}" popover class="argocd-pop" method="post" action="/plugin/argocd/delete">
+            <input type="hidden" name="{{../../csrfParam}}" value="{{../../csrfToken}}"/>
+            <input type="hidden" name="clusterId" value="{{../../clusterId}}"/><input type="hidden" name="app" value="{{name}}"/>
+            <p>Type <b>{{name}}</b> to delete this application.</p>
+            <input type="text" name="confirm" required pattern="{{confirmPattern}}" placeholder="{{name}}" autocomplete="off"/>
+            <div class="argocd-checks" style="margin-top:8px">
+              <label><input type="radio" name="cascade" value="true" checked/> Also delete its Kubernetes resources</label>
+              <label><input type="radio" name="cascade" value="false"/> Keep the resources running</label>
+            </div>
+            <div class="argocd-popbtns"><button class="button button-red argocd-act" type="submit">Delete</button><button type="button" class="btn btn-default argocd-act" popovertarget="argocd-pop-del-{{../index}}" popovertargetaction="hide">Cancel</button></div>
+          </form>
+        {{/if}}
+      </div>
+      {{/unless}}
+    </div>
+
+    <div class="argocd-status">
+      <div class="argocd-card"><h5>App health</h5><div class="argocd-big"><span class="{{healthClass}}">{{healthStatus}}</span></div></div>
+      <div class="argocd-card"><h5>Sync status</h5><div class="argocd-big"><span class="{{syncClass}}">{{syncStatus}}</span></div>
+        <div class="argocd-muted">to {{targetRevision}}{{#if shortRevision}} ({{shortRevision}}){{/if}} · {{#if autoSync}}auto sync on{{else}}auto sync off{{/if}}</div></div>
+      <div class="argocd-card"><h5>Last sync</h5><div class="argocd-big">{{#if operationPhase}}<span class="{{#if operationFailed}}argocd-bad{{else}}argocd-ok{{/if}}">{{operationPhase}}</span>{{else}}None yet{{/if}}</div>
+        <div class="argocd-muted">{{lastSyncAgo}}{{#if operationMessage}} · {{operationMessage}}{{/if}}</div></div>
+      <div class="argocd-card"><h5>Source</h5><div style="word-break:break-all">{{source}}</div><div class="argocd-muted">project {{project}} · namespace {{namespace}}</div></div>
+    </div>
+    {{#each conditions}}<div class="argocd-cond">{{this}}</div>{{/each}}
+    {{/with}}
+
+    {{#if hasTree}}
+    <div class="argocd-view">
+      {{#each zoomOptions}}<input type="radio" name="{{../prefix}}-zoom" id="{{radio}}" {{#if checked}}checked{{/if}}/>{{/each}}
+      {{#each nodeRadios}}<input type="radio" name="{{../prefix}}-node" id="{{id}}" {{#if checked}}checked{{/if}}/>{{/each}}
+      <div class="argocd-zoombar">
+        <span class="argocd-muted" style="margin-right:4px">Zoom</span>
+        {{#each zoomOptions}}<label for="{{radio}}">{{label}}</label>{{/each}}
+        <span class="argocd-legend">
+          <span><i class="argocd-sw argocd-sw-ok"></i>Healthy / Synced</span>
+          <span><i class="argocd-sw argocd-sw-info"></i>Progressing</span>
+          <span><i class="argocd-sw argocd-sw-warn"></i>OutOfSync (dashed)</span>
+          <span><i class="argocd-sw argocd-sw-bad"></i>Degraded / Missing</span>
+          <span class="argocd-muted">Click a resource to show or hide its details. 125% and above shows more detail. Scroll to pan.</span>
+        </span>
+      </div>
+      <div class="argocd-graph"><div class="argocd-canvas">{{{treeHtml}}}</div></div>
+
+      <div class="argocd-nodecards">
+      {{#each nodes}}
+        <div class="argocd-nodecard argocd-card-{{index}}">
+          <div class="argocd-bar" style="padding-top:0">
+            <label for="{{../prefix}}-n-none" class="argocd-title" title="Click to hide details"><b>{{kind}}</b> <span>{{#if namespace}}{{namespace}}/{{/if}}{{name}}</span></label>
+            {{#if hasHealth}}<span class="{{healthClass}}">{{health}}</span>{{/if}}{{#if hasSync}}<span class="{{syncClass}}">{{sync}}</span>{{/if}}
+            <span class="argocd-spacer"></span>
+            <div class="argocd-actions">
+            {{#unless isApp}}{{#if ../../canManage}}
+              <form method="post" action="/plugin/argocd/resource-action">
+                <input type="hidden" name="{{../../csrfParam}}" value="{{../../csrfToken}}"/>
+                <input type="hidden" name="clusterId" value="{{../../clusterId}}"/><input type="hidden" name="app" value="{{appName}}"/>
+                <input type="hidden" name="kind" value="{{kind}}"/><input type="hidden" name="name" value="{{name}}"/><input type="hidden" name="namespace" value="{{namespace}}"/>
+                <input type="hidden" name="group" value="{{group}}"/><input type="hidden" name="version" value="{{version}}"/><input type="hidden" name="action" value="sync"/>
+                <button class="btn btn-default argocd-act" type="submit">Sync</button>
+              </form>
+              {{#if restartable}}
+              <form method="post" action="/plugin/argocd/resource-action">
+                <input type="hidden" name="{{../../csrfParam}}" value="{{../../csrfToken}}"/>
+                <input type="hidden" name="clusterId" value="{{../../clusterId}}"/><input type="hidden" name="app" value="{{appName}}"/>
+                <input type="hidden" name="kind" value="{{kind}}"/><input type="hidden" name="name" value="{{name}}"/><input type="hidden" name="namespace" value="{{namespace}}"/>
+                <input type="hidden" name="group" value="{{group}}"/><input type="hidden" name="version" value="{{version}}"/><input type="hidden" name="action" value="restart"/>
+                <button class="btn btn-default argocd-act" type="submit">Restart</button>
+              </form>
+              {{/if}}
+              <button type="button" class="button button-red argocd-act" popovertarget="{{../prefix}}-del{{index}}">Delete</button>
+                <form id="{{../prefix}}-del{{index}}" popover class="argocd-pop" method="post" action="/plugin/argocd/resource-action">
+                  <input type="hidden" name="{{../../csrfParam}}" value="{{../../csrfToken}}"/>
+                  <input type="hidden" name="clusterId" value="{{../../clusterId}}"/><input type="hidden" name="app" value="{{appName}}"/>
+                  <input type="hidden" name="kind" value="{{kind}}"/><input type="hidden" name="name" value="{{name}}"/><input type="hidden" name="namespace" value="{{namespace}}"/>
+                  <input type="hidden" name="group" value="{{group}}"/><input type="hidden" name="version" value="{{version}}"/><input type="hidden" name="action" value="delete"/>
+                  <p>Type <b>{{name}}</b> to delete this {{kind}}.</p>
+                  <input type="text" name="confirm" required pattern="{{confirmPattern}}" placeholder="{{name}}" autocomplete="off"/>
+                  <div class="argocd-popbtns"><button class="button button-red argocd-act" type="submit">Delete</button><button type="button" class="btn btn-default argocd-act" popovertarget="{{../prefix}}-del{{index}}" popovertargetaction="hide">Cancel</button></div>
+                </form>
+            {{/if}}{{/unless}}
+            </div>
+          </div>
+          {{#if hasInfo}}<div class="argocd-kv">{{#each infoItems}}<span>{{name}}</span><span>{{value}}</span>{{/each}}{{#if hasImages}}<span>Images</span><span>{{imageList}}</span>{{/if}}</div>{{else}}{{#if hasImages}}<div class="argocd-kv"><span>Images</span><span>{{imageList}}</span></div>{{/if}}{{/if}}
+          <h4>Events</h4>
+          {{#if hasEvents}}
+          <table class="table table-condensed argocd-table"><thead><tr><th>Type</th><th>Reason</th><th>Message</th><th>Count</th><th>Last seen</th></tr></thead><tbody>
+            {{#each events}}<tr><td>{{type}}</td><td>{{reason}}</td><td>{{message}}</td><td>{{count}}</td><td class="argocd-muted">{{ago}}</td></tr>{{/each}}
+          </tbody></table>
+          {{else}}<p class="argocd-muted">No recent events.</p>{{/if}}
+          {{#if isPod}}<h4>Logs <span class="argocd-muted">(last 80 lines)</span></h4><div class="argocd-pre">{{logs}}</div>{{/if}}
+          {{#if manifest}}<h4>Live manifest</h4><div class="argocd-pre">{{manifest}}</div>{{/if}}
+        </div>
+      {{/each}}
+      </div>
+    </div>
+    {{else}}
+      {{#if treeMessage}}<div class="argocd-empty">Resource tree unavailable: {{treeMessage}}</div>{{/if}}
+    {{/if}}
+
+    {{#with app}}{{#if history}}
+    <h4>History</h4>
+    <table class="table table-condensed argocd-table"><thead><tr><th>ID</th><th>Revision</th><th>Deployed</th></tr></thead><tbody>
+      {{#each history}}<tr><td>{{id}}</td><td>{{revision}}</td><td class="argocd-muted">{{deployedAgo}} · {{deployedAt}}</td></tr>{{/each}}
+    </tbody></table>
+    {{/if}}{{/with}}
+  </div>
+  {{/each}}
+  </div>
+{{/if}}
+</div>
