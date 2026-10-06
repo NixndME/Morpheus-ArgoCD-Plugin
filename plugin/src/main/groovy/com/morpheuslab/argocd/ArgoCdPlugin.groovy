@@ -60,10 +60,10 @@ class ArgoCdPlugin extends Plugin {
         renderer.registerNonceHelper(morpheus.getWebRequest())
         renderer.registerI18nHelper(this, morpheus)
         setRenderer(renderer)
-        setPermissions([
-            Permission.build('Argo CD Applications', PERMISSION_APPS,
-                [Permission.AccessType.none, Permission.AccessType.read, Permission.AccessType.full])
-        ])
+        Permission apps = Permission.build('Argo CD Applications', PERMISSION_APPS,
+            [Permission.AccessType.none, Permission.AccessType.read, Permission.AccessType.full])
+        apps.subCategory = 'Argo CD'   // the section name in Roles; blank otherwise
+        setPermissions([apps])
         registerProvider(new ArgoCdClusterTabProvider(this, morpheus))
         controllers.add(new ArgoCdController(this, morpheus))
     }

@@ -17,7 +17,7 @@ apply plugin: 'com.github.johnrengelman.shadow'
 apply plugin: 'asset-pipeline'
 
 group = 'com.morpheuslab'
-version = '0.1.27'
+version = '0.1.28'
 
 java {
     // build on JDK 17, target 11 — the appliance classloader rejects 17 bytecode
