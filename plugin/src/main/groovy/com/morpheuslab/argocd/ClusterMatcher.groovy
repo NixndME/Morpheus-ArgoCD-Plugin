@@ -46,6 +46,12 @@ class ClusterMatcher {
                 found << new Match(server: server, name: name, method: method, apps: destApps.size())
             }
         }
+        // a fresh Argo CD on our own nodes: its in-cluster destination is this cluster, apps or not
+        String inCluster = norm(ClusterPanel.IN_CLUSTER)
+        Map local = argoClusters.find { norm(it.server as String) == inCluster }
+        if (local && !byServer.containsKey(inCluster) && clusterHosts.contains(ClusterPanel.host(argoUrl))) {
+            found << new Match(server: inCluster, name: local.name as String, method: 'host', apps: 0)
+        }
         found
     }
 

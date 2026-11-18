@@ -12,7 +12,7 @@ import javax.net.ssl.X509TrustManager
 import java.security.cert.X509Certificate
 
 /**
- * Argo CD REST API client (Bearer token). Every call returns an ArgoResult — an API failure is a
+ * Argo CD REST API client (Bearer token). Every call returns an ArgoResult, an API failure is a
  * value the UI explains (unreachable / token rejected / forbidden / not found), never a throw.
  */
 @Slf4j
@@ -135,7 +135,7 @@ class ArgoCdClient {
         ArgoResult r = call('GET', "/api/v1/applications/${enc(app)}/logs?" + query([podName: ref.name, namespace: ref.namespace,
             tailLines: tail as String, follow: 'false']))
         if (r.ok) {
-            // NDJSON: JsonSlurper would accept the first object and silently drop the rest — parse per line
+            // NDJSON: JsonSlurper would accept the first object and silently drop the rest, parse per line
             String raw = r.raw ?: ''
             List<String> lines = []
             raw.readLines().each { String l ->
@@ -183,6 +183,7 @@ class ArgoCdClient {
             }
             c.requestMethod = method
             c.connectTimeout = CONNECT_TIMEOUT_MILLIS
+            c.instanceFollowRedirects = false
             c.readTimeout = READ_TIMEOUT_MILLIS
             c.setRequestProperty('Accept', 'application/json')
             if (bearer) c.setRequestProperty('Authorization', "Bearer ${bearer}")
@@ -245,7 +246,7 @@ class ArgoResult {
         switch (kind) {
             case Kind.OK: return 'OK'
             case Kind.UNREACHABLE: return "Argo CD is unreachable from the Morpheus appliance (${message})"
-            case Kind.UNAUTHORIZED: return 'Argo CD rejected the API token — it may be expired or revoked. Update it in the plugin settings.'
+            case Kind.UNAUTHORIZED: return 'Argo CD rejected the API token. It may be expired or revoked. Save a new one under Administration, Integrations, Argo CD.'
             case Kind.FORBIDDEN: return "The Argo CD account behind this token is not allowed to do that (Argo CD RBAC): ${message ?: 'permission denied'}"
             case Kind.NOT_FOUND: return "Not found in Argo CD: ${message ?: ''}".trim()
             default: return "Argo CD returned HTTP ${status}: ${message ?: 'no details'}"

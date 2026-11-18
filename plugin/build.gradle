@@ -17,10 +17,10 @@ apply plugin: 'com.github.johnrengelman.shadow'
 apply plugin: 'asset-pipeline'
 
 group = 'com.morpheuslab'
-version = '0.1.34'
+version = '0.2.0'
 
 java {
-    // build on JDK 17, target 11 — the appliance classloader rejects 17 bytecode
+    // build on JDK 17, target 11: the appliance classloader rejects 17 bytecode
     sourceCompatibility = JavaVersion.toVersion('1.11')
     targetCompatibility = JavaVersion.toVersion('1.11')
 }
@@ -58,7 +58,7 @@ jar {
             'Morpheus-Name': 'Argo CD',
             'Morpheus-Organization': 'morpheuslab',
             'Morpheus-Code': 'argocd',
-            'Morpheus-Description': 'Manage Argo CD applications from Morpheus — status, sync, create and delete, governed by Morpheus RBAC.',
+            'Morpheus-Description': 'Manage Argo CD applications from Morpheus: install or connect one or more Argo CDs, see, sync, create and delete apps, governed by Morpheus RBAC.',
             'Morpheus-Labels': 'Plugin,GitOps,Kubernetes',
             'Morpheus-Min-Appliance-Version': '8.0.0'
         )

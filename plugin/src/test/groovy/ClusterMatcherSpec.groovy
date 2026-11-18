@@ -84,6 +84,16 @@ class ClusterMatcherSpec extends Specification {
         matcher(probe).match([], [app('c', [server: 'https://kubernetes.default.svc'])]).isEmpty()
     }
 
+    def 'a fresh Argo CD on our nodes counts its in-cluster destination before it has apps'() {
+        given:
+        def probe = cluster([:], [:], null)
+        def inCluster = [[name: 'in-cluster', server: 'https://kubernetes.default.svc']]
+        expect:
+        matcher(probe, ['argocd.example.com']).match(inCluster, []).collect { [it.name, it.method, it.apps] } == [['in-cluster', 'host', 0]]
+        matcher(probe).match(inCluster, []).isEmpty()
+        matcher(probe, ['argocd.example.com']).match([], []).isEmpty()
+    }
+
     def 'targets() follows proved matches by server or Argo CD cluster name'() {
         given:
         def m = [new ClusterMatcher.Match(server: 'https://k8s.example.com', name: 'prod', method: 'uid', apps: 1)]

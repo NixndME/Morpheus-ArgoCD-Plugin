@@ -6,7 +6,7 @@ import groovy.util.logging.Slf4j
 
 /**
  * View model for the cluster "Argo CD" tab. Built in Groovy because Handlebars cannot compute; it
- * the template root IS model.object — reference {{field}}, never {{object.field}}.
+ * the template root IS model.object, reference {{field}}, never {{object.field}}.
  */
 @Slf4j
 class ClusterPanel {
@@ -26,6 +26,13 @@ class ClusterPanel {
     String csrfParam
     String csrfToken
     Map flash
+
+    // which Argo CD (one section per Argo CD on this cluster)
+    String instanceId = ''
+    String instanceLabel
+    boolean multi
+    /** Suffix for element ids, '' for the first section so its ids stay as before. */
+    String sfx = ''
 
     // connection
     String state = 'ok'              // notConfigured | unreachable | error | ok
@@ -99,6 +106,7 @@ class ClusterPanel {
         String how = matches*.methodText.unique().join(', ')
         "Managed by Argo CD as ${names.size() > 1 ? names[0..-2].join(', ') + ' and ' + names[-1] : names[0]} (${how})"
     }
+    boolean getShowInstanceLabel() { multi && instanceLabel }
     String getFlashLevel() { flash?.level }
     String getFlashMessage() { flash?.message }
     boolean getHasFlash() { flash?.message }
@@ -108,7 +116,9 @@ class ClusterPanel {
             clusterId: ctx.clusterId as Long, clusterName: ctx.clusterName, clusterApiUrl: ctx.clusterApiUrl,
             tabUrl: "/infrastructure/clusters/${ctx.clusterId}#!argocd-cluster-tab",
             accessLevel: ctx.accessLevel, canRead: ctx.accessLevel in ['read', 'full'], canManage: ctx.accessLevel == 'full',
-            csrfParam: ctx.csrf?.param, csrfToken: ctx.csrf?.value, flash: ctx.flash)
+            csrfParam: ctx.csrf?.param, csrfToken: ctx.csrf?.value, flash: ctx.flash,
+            instanceId: (ctx.instanceId ?: '') as String, instanceLabel: ctx.instanceLabel as String, multi: ctx.multi as boolean,
+            sfx: (ctx.sfx ?: '') as String)
         ArgoCdSettings s = ctx.settings as ArgoCdSettings
         p.defaultProject = s.defaultProject ?: 'default'
         if (!s.configured) {
@@ -142,12 +152,15 @@ class ClusterPanel {
 
         PanelState.State st = ctx.state as PanelState.State
         List<ArgoApp> toRender = p.apps.take(MAX_PRERENDER)
-        ArgoApp sel = p.apps.find { it.name == st?.selectedApp }
+        // an open app belongs to one Argo CD; old state without one opens in any section
+        boolean ours = !st?.selectedInstance || st.selectedInstance == p.instanceId
+        ArgoApp sel = ours ? p.apps.find { it.name == st?.selectedApp } : null
+        int offset = (ctx.indexOffset ?: 0) as int
         if (sel && !toRender.contains(sel)) toRender << sel
         toRender.eachWithIndex { ArgoApp a, int i ->
-            a.viewIndex = i
-            boolean isSel = a.name == st?.selectedApp
-            p.appViews << AppView.build(i, a, client, isSel ? st.selectedResource : null, isSel)
+            a.viewIndex = offset + i
+            boolean isSel = ours && a.name == st?.selectedApp
+            p.appViews << AppView.build(offset + i, a, client, isSel ? st.selectedResource : null, isSel)
         }
         p.panelCss = p.appViews.collect { AppView v ->
             "#${v.radioId}:checked~.argocd-appviews .argocd-appview-${v.index}{display:block}" +

@@ -1,8 +1,8 @@
 package com.morpheuslab.argocd
 
 /**
- * Argo CD's application resource graph — Application -> managed resources -> owned children
- * (Deployment -> ReplicaSet -> Pod, Service -> EndpointSlice, …) — laid out the way the Argo CD UI
+ * Argo CD's application resource graph, Application -> managed resources -> owned children
+ * (Deployment -> ReplicaSet -> Pod, Service -> EndpointSlice, …), laid out the way the Argo CD UI
  * draws it (left to right, children grouped beside their parent) and rendered server-side as inline
  * SVG. No JavaScript: every node is an SVG link that selects it in the panel.
  */
@@ -125,7 +125,7 @@ class ResourceTree {
             String cls = "argocd-node argocd-pos-${n.index} argocd-hn-${css(n.health)} argocd-sn-${css(n.sync)}" +
                 "${n.uid == 'app' ? ' argocd-node-app' : ''}${n.failed ? ' argocd-node-failed' : ''}"
             String body = nodeBody(n)
-            // two labels per node: "on" selects it; "off" (shown only while selected) deselects it — click toggles
+            // two labels per node: "on" selects it; "off" (shown only while selected) deselects it, click toggles
             sb << "<label for=\"${prefix}-n${n.index}\" class=\"${cls} argocd-node-on\" title=\"${esc(n.kind)} ${esc(n.namespace ? n.namespace + '/' : '')}${esc(n.name)}\">${body}</label>"
             sb << "<label for=\"${prefix}-n-none\" class=\"${cls} argocd-node-off\" title=\"Hide details\">${body}</label>"
         }
@@ -217,7 +217,7 @@ class ResourceTree {
         String cls = "argocd-node argocd-hn-${css(n.health)} argocd-sn-${css(n.sync)}${n.uid == 'app' ? ' argocd-node-app' : ''}${n.selected ? ' argocd-node-selected' : ''}${n.failed ? ' argocd-node-failed' : ''}"
         StringBuilder g = new StringBuilder()
         g << "<g class=\"${cls}\" transform=\"translate(${x},${y})\">"
-        g << "<title>${esc(n.kind)} ${esc(n.namespace ? n.namespace + '/' : '')}${esc(n.name)}${n.health ? ' — ' + esc(n.health) : ''}${n.sync ? ' — ' + esc(n.sync) : ''}</title>"
+        g << "<title>${esc(n.kind)} ${esc(n.namespace ? n.namespace + '/' : '')}${esc(n.name)}${n.health ? ', ' + esc(n.health) : ''}${n.sync ? ', ' + esc(n.sync) : ''}</title>"
         g << "<rect class=\"argocd-node-box\" width=\"${NODE_W}\" height=\"${NODE_H}\" rx=\"6\"/>"
         g << "<rect class=\"argocd-node-health argocd-h-${css(n.health)}\" width=\"5\" height=\"${NODE_H}\" rx=\"2\"/>"
         g << "<rect class=\"argocd-kind-badge\" x=\"11\" y=\"${(int) (NODE_H / 2) - 10}\" width=\"34\" height=\"20\" rx=\"3\"/>"

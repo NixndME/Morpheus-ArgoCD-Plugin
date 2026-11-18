@@ -14,8 +14,8 @@ import groovy.util.logging.Slf4j
 /**
  * Every action the Argo CD panel can take. Morpheus enforces the route permission (Roles > Argo CD
  * Applications) before a handler runs; mutating handlers additionally require POST (Morpheus checks
- * the CSRF token on POST). Each handler calls the Argo CD API server-side — the token never reaches
- * the browser — records the outcome in PanelState and sends the user back to the cluster tab.
+ * the CSRF token on POST). Each handler calls the Argo CD API server-side, the token never reaches
+ * the browser, records the outcome in PanelState and sends the user back to the cluster tab.
  */
 @Slf4j
 class ArgoCdController implements PluginController {
@@ -65,24 +65,25 @@ class ArgoCdController implements PluginController {
     // ---------- read ----------
 
     def ping(ViewModel<Map> model) {
-        ArgoCdSettings s = ArgoCdSettings.read(morpheus, plugin)
-        Map out = [ok: true, plugin: 'argocd', configured: s.configured, user: model.user?.username,
+        List<ArgoInstance> mine = Instances.visibleTo(morpheus, plugin, Instances.accountOf(morpheus, model.user)?.id)
+        Map out = [ok: true, plugin: 'argocd', configured: !mine.isEmpty(), user: model.user?.username,
                    access: Access.level(model.user)]
-        if (s.configured) {
-            ArgoResult v = ArgoCdClient.of(s).version()
-            out.argocd = v.ok ? v.data?.Version : v.describe()
+        out.argocd = mine.collect { ArgoInstance i ->
+            ArgoResult v = ArgoCdClient.of(i.settings()).version()
+            [id: i.id, name: i.label, version: v.ok ? v.data?.Version : v.describe()]
         }
         JsonResponse.of(out)
     }
 
-    /** Select an app (and optionally one of its resources) — Argo CD's "click a node". */
+    /** Select an app (and optionally one of its resources), Argo CD's "click a node". */
     def select(ViewModel<Map> model) {
         Map p = params(model)
         Long clusterId = p.clusterId as Long
         if (!Access.canRead(model.user)) return back(clusterId, 'top', model)
         PanelState.update(model.user?.id, clusterId) { PanelState.State s ->
-            if (s.selectedApp != p.app) { s.selectedRef = null; s.selectedResource = null }
+            if (s.selectedApp != p.app || (s.selectedInstance ?: '') != (p.instance ?: '')) { s.selectedRef = null; s.selectedResource = null }
             s.selectedApp = p.app
+            s.selectedInstance = p.instance ?: ''
             if (p.kind && p.name) {
                 s.selectedRef = [kind: p.kind, name: p.name, namespace: p.namespace ?: '', group: p.group ?: '',
                                  version: p.version ?: '', uid: p.uid ?: '']
@@ -189,7 +190,7 @@ class ArgoCdController implements PluginController {
             ArgoResult r = c.deleteApplication(p.app, cascade)
             if (!r.ok) return r
             PanelState.update(model.user?.id, p.clusterId as Long) { PanelState.State s ->
-                if (s.selectedApp == p.app) { s.selectedApp = null; s.selectedRef = null; s.selectedResource = null }
+                if (s.selectedApp == p.app && (s.selectedInstance ?: '') == (p.instance ?: '')) { s.selectedApp = null; s.selectedRef = null; s.selectedResource = null }
             }
             ok("Deleting ${p.app}${cascade ? ' and its Kubernetes resources' : ' (resources kept)'}.") + [keepOpen: false]
         }
@@ -213,7 +214,7 @@ class ArgoCdController implements PluginController {
                                   destination: [server: p.server, namespace: p.namespace], syncPolicy: syncPolicy]]
             ArgoResult r = c.createApplication(app)
             if (!r.ok) return r
-            PanelState.update(model.user?.id, p.clusterId as Long) { PanelState.State s -> s.selectedApp = p.app; s.selectedRef = null }
+            PanelState.update(model.user?.id, p.clusterId as Long) { PanelState.State s -> s.selectedApp = p.app; s.selectedInstance = p.instance ?: ''; s.selectedRef = null }
             ok("Created ${p.app}.${p.autoSync == 'true' ? ' Auto-sync will deploy it.' : ' Press Sync to deploy it.'}")
         }
     }
@@ -270,10 +271,11 @@ class ArgoCdController implements PluginController {
             return deny(model, clusterId, 'Your Morpheus role has read-only access to Argo CD applications.')
         }
         if (p.app != null && !(p.app ==~ NAME_RE)) return deny(model, clusterId, 'Invalid application name.')
-        ArgoCdSettings s = ArgoCdSettings.read(morpheus, plugin)
-        if (!s.configured) return deny(model, clusterId, 'Argo CD is not configured.')
+        ArgoInstance inst = instance(user, p)
+        if (!inst) return deny(model, clusterId, 'That Argo CD is not set up, or not available to your tenant.')
+        ArgoCdSettings s = inst.settings()
         ArgoCdClient client = ArgoCdClient.of(s)
-        String denied = checkScope(clusterId, s, client, p)
+        String denied = checkScope(clusterId, s, client, p, (model.request?.requestURI as String)?.endsWith('/argocd/create') as boolean)
         if (denied) return deny(model, clusterId, denied)
         Object out
         try {
@@ -284,10 +286,11 @@ class ArgoCdController implements PluginController {
         }
         if (out instanceof ArgoResult) out = fail(((ArgoResult) out).describe())
         Map o = out as Map
-        // keep the same app (and node) open after the redirect — the view is seamless across actions
+        // keep the same app (and node) open after the redirect, the view is seamless across actions
         if (p.app && o.keepOpen != false) {
             PanelState.update(user?.id, clusterId) { PanelState.State st ->
                 st.selectedApp = p.app
+                st.selectedInstance = p.instance ?: ''
                 st.selectedResource = (p.kind && p.name && p.action != 'delete') ? ResourceTree.key(p.kind, p.namespace, p.name) : null
             }
         }
@@ -295,18 +298,25 @@ class ArgoCdController implements PluginController {
         flashBack(user, clusterId, o.level as String, o.message as String, model)
     }
 
+    /** The Argo CD a form names (integration id), among those the user's tenant may use. */
+    private ArgoInstance instance(User user, Map p) {
+        Long id = (p.instance as String)?.isLong() ? p.instance as Long : null
+        Instances.find(morpheus, plugin, Instances.accountOf(morpheus, user)?.id, id)
+    }
+
     /** The app (or new app's destination) must belong to this cluster; never trust the form for that. */
-    private String checkScope(Long clusterId, ArgoCdSettings s, ArgoCdClient client, Map p) {
+    /** Only Create names a destination; every other action must name an app of this cluster (a form can not skip that). */
+    private String checkScope(Long clusterId, ArgoCdSettings s, ArgoCdClient client, Map p, boolean creating) {
         ClusterScope scope = ClusterScope.of(morpheus, clusterId)
         if (!scope?.kubernetes) return 'Unknown Kubernetes cluster.'
         ArgoResult list = client.listApplications()
         if (!list.ok) return list.describe()
         List<ArgoApp> all = ((list.data?.items ?: []) as List).collect { ArgoApp.parse(it as Map) }
         List<ClusterMatcher.Match> matches = scope.matches(s, client, all)
-        if (p.server != null && !matches.any { it.server == ClusterMatcher.norm(p.server as String) }) {
+        if (creating && !matches.any { it.server == ClusterMatcher.norm(p.server as String) }) {
             return 'That destination is not this cluster in Argo CD.'
         }
-        if (p.app && p.server == null) {
+        if (!creating && p.app) {
             ArgoApp a = all.find { it.name == p.app }
             if (!a) return "Application ${p.app} was not found in Argo CD."
             if (!ClusterMatcher.targets(a, matches)) return "Application ${p.app} does not deploy to this cluster."

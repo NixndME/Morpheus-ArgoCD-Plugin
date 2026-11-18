@@ -41,23 +41,32 @@ class ArgoCdClusterTabProvider extends AbstractClusterTabProvider {
     @Override
     Plugin getPlugin() { plugin }
 
+    /** renderTemplate() is not handed the tenant either. */
+    private static final ThreadLocal<Long> CURRENT_ACCOUNT = new ThreadLocal<>()
+
     /**
-     * Shown only where Argo CD manages at least one app on this cluster. If Argo CD itself is broken
-     * (not configured, unreachable, token rejected) full-access users still see the tab with the reason.
+     * Shown where an Argo CD the user's tenant may use manages at least one app (or runs on this cluster). If an
+     * Argo CD is broken (not set up, unreachable, token rejected) full-access users still see the tab with the reason.
      */
     @Override
     Boolean show(ComputeServerGroup cluster, User user, Account account) {
         CURRENT_USER.set(user)
+        Long accountId = account?.id ?: Instances.accountOf(morpheus, user)?.id
+        CURRENT_ACCOUNT.set(accountId)
         ClusterScope scope = new ClusterScope(morpheus: morpheus, cluster: cluster)
         if (!scope.kubernetes || !Access.canRead(user)) return false
         try {
-            ArgoCdSettings s = ArgoCdSettings.read(morpheus, plugin)
-            if (!s.configured) return Access.canManage(user)
-            ArgoCdClient client = ArgoCdClient.of(s)
-            ArgoResult apps = client.listApplications()
-            if (!apps.ok) return Access.canManage(user)
-            List<ArgoApp> all = ((apps.data?.items ?: []) as List).collect { ArgoApp.parse(it as Map) }
-            return !scope.matches(s, client, all).isEmpty()
+            List<ArgoInstance> mine = Instances.visibleTo(morpheus, plugin, accountId)
+            if (!mine) return Access.canManage(user)
+            for (ArgoInstance inst : mine) {
+                ArgoCdSettings s = inst.settings()
+                ArgoCdClient client = ArgoCdClient.of(s)
+                ArgoResult apps = client.listApplications()
+                if (!apps.ok) { if (Access.canManage(user)) return true; continue }
+                List<ArgoApp> all = ((apps.data?.items ?: []) as List).collect { ArgoApp.parse(it as Map) }
+                if (!scope.matches(s, client, all).isEmpty()) return true
+            }
+            return false
         } catch (Throwable t) {
             log.warn("ArgoCD: show() failed for cluster ${cluster?.id}: ${t}")
             return false
@@ -67,26 +76,48 @@ class ArgoCdClusterTabProvider extends AbstractClusterTabProvider {
     @Override
     HTMLResponse renderTemplate(ComputeServerGroup cluster) {
         User user = CURRENT_USER.get()
+        Long accountId = CURRENT_ACCOUNT.get()
         CURRENT_USER.remove()
+        CURRENT_ACCOUNT.remove()
+        ViewModel<Map> model = new ViewModel<>()
+        model.object = [sections: sections(cluster, user, accountId)]
+        return getRenderer().renderTemplate('hbs/cluster/argocd-tab', model)
+    }
+
+    /** One panel per Argo CD that manages this cluster (or has a problem the manager should see). */
+    List<ClusterPanel> sections(ComputeServerGroup cluster, User user, Long accountId) {
         ClusterScope scope = new ClusterScope(morpheus: morpheus, cluster: cluster)
-        ClusterPanel panel
+        List<ArgoInstance> mine = []
+        try { mine = Instances.visibleTo(morpheus, plugin, accountId) } catch (Throwable t) { log.warn("ArgoCD: listing Argo CDs failed: ${t}") }
+        Map flash = PanelState.takeFlash(user?.id, cluster.id)
+        Map base = [clusterId: cluster.id, clusterName: cluster.name, clusterApiUrl: cluster.serviceUrl,
+                    clusterHosts: scope.hosts(), probe: scope.probe(), cached: true, accessLevel: Access.level(user),
+                    state: PanelState.get(user?.id, cluster.id), csrf: Csrf.token()]
+        if (!mine) return [panel(base + [settings: new ArgoCdSettings(), flash: flash], cluster)]
+        List<ClusterPanel> out = []
+        int offset = 0
+        mine.eachWithIndex { ArgoInstance inst, int i ->
+            ClusterPanel p = panel(base + [settings: inst.settings(), instanceId: String.valueOf(inst.id), instanceLabel: inst.label,
+                                           multi: mine.size() > 1, sfx: i == 0 ? '' : "-s${i}".toString(), indexOffset: offset], cluster)
+            boolean useful = p.state != 'ok' ? Access.canManage(user) : !p.matches.isEmpty()
+            if (useful) { out << p; offset += p.appViews.size() }
+        }
+        if (!out) return [panel(base + [settings: mine[0].settings(), instanceId: String.valueOf(mine[0].id), flash: flash], cluster)]
+        out[0].flash = flash
+        if (out.size() == 1) out[0].multi = false
+        // id suffixes follow the shown sections, so the first one keeps the ids of a single Argo CD
+        out.eachWithIndex { ClusterPanel p, int i -> p.sfx = i == 0 ? '' : "-s${i}".toString() }
+        out
+    }
+
+    private ClusterPanel panel(Map ctx, ComputeServerGroup cluster) {
         try {
-            panel = ClusterPanel.build(
-                clusterId: cluster.id, clusterName: cluster.name, clusterApiUrl: cluster.serviceUrl,
-                clusterHosts: scope.hosts(), probe: scope.probe(), cached: true,
-                accessLevel: Access.level(user),
-                settings: ArgoCdSettings.read(morpheus, plugin),
-                state: PanelState.get(user?.id, cluster.id),
-                flash: PanelState.takeFlash(user?.id, cluster.id),
-                csrf: Csrf.token())
+            ClusterPanel.build(ctx)
         } catch (Throwable t) {
             log.error("ArgoCD: panel failed for cluster ${cluster?.id}", t)
-            panel = new ClusterPanel(clusterId: cluster.id, clusterName: cluster.name, state: 'error',
+            new ClusterPanel(clusterId: cluster.id, clusterName: cluster.name, state: 'error',
                 stateMessage: "The Argo CD panel failed to render: ${t.class.simpleName}: ${t.message}")
         }
-        ViewModel<ClusterPanel> model = new ViewModel<>()
-        model.object = panel
-        return getRenderer().renderTemplate('hbs/cluster/argocd-tab', model)
     }
 
     @Override

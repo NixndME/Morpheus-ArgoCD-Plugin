@@ -13,6 +13,7 @@ class PanelState {
 
     static class State {
         String selectedApp
+        String selectedInstance        // Argo CD integration id of the open app ('' for the only one)
         String selectedResource        // ResourceTree key or uid
         Map selectedRef                // kind/name/namespace/group/version/uid of the selected resource
         String flashLevel              // success | danger | info

@@ -12,7 +12,9 @@ see the Argo CD applications running on that cluster and work with them without 
 - Roll back to an earlier entry in History
 - Edit an application: target revision, path, Helm values files and parameters, Kustomize images, automatic sync
 - Resource actions that Argo CD offers, such as restart, pause, resume and scale; sync or delete a single resource
-- Morpheus role permission **Argo CD Applications**: none / read / full
+- Install Argo CD on an HKS cluster from Morpheus with one click, or connect an Argo CD you already have
+- Several Argo CDs at once: one Argo CD integration each; a cluster tab shows a section for every Argo CD on it
+- Morpheus role permissions **Argo CD Applications** (none / read / full) and **Argo CD Admin** (install, connect)
 
 ## Walkthrough
 
@@ -32,13 +34,33 @@ not used for matching. The plugin proves that an Argo CD destination is the same
 2. comparing the cluster CA of both API endpoints
 3. comparing the API URL
 
+An Argo CD that runs on the cluster itself (for example one the plugin installed) also counts before it has any
+application, so you can create the first one from the tab.
+
 ## Install
 
 1. Download `argocd-plugin.jar` from the releases page.
 2. In Morpheus go to *Administration > Integrations > Plugins* and upload it.
-3. Edit the plugin and set the Argo CD URL and an Argo CD API token (see [Argo CD account and token](#argo-cd-account-and-token-for-morpheus)).
-4. In *Administration > Roles* open a role and set **Argo CD Applications** (in the Argo CD section) to read or full.
-   System Admin gets full access automatically.
+3. Go to *Administration > Integrations*, click *New Integration*, pick **Argo CD**, give it a name and save.
+4. Open it. Pick one of the two ways:
+   - **Install on an HKS cluster.** Every HKS cluster is listed. Press *Install* on one. The plugin installs
+     Argo CD (the version bundled in the jar) in namespace `argocd`, opens port 30443 on the nodes, adds the
+     `morpheus` account below, makes its token and connects. It tries the node addresses Morpheus knows,
+     workers first, and keeps the one that answers. The *Connection* tab then shows the Argo CD address and the
+     first `admin` password. Change that password in Argo CD.
+   - **Use an Argo CD you already have.** On the *Connection* tab type its address and an API token (see
+     [Argo CD account and token](#argo-cd-account-and-token-for-morpheus)). The plugin tests them before saving.
+5. In *Administration > Roles* open a role and set **Argo CD Applications** (in the Argo CD section) to read or full.
+   **Argo CD Admin** lets a role use the integration page. System Admin gets both automatically.
+
+**Several Argo CDs.** Add one Argo CD integration per Argo CD (for example one you already have and one the
+plugin installs). Each keeps its own address and token in Morpheus Cypher. A cluster tab shows one section per
+Argo CD that manages that cluster. An Argo CD added in the main tenant can be used by every tenant; one added in a
+tenant only by that tenant. When you upgrade from a version with one Argo CD, the first Argo CD integration page
+an administrator opens takes over the connection from the plugin settings.
+
+*Remove* on the integration page deletes only an Argo CD this plugin installed. The applications it deployed keep
+running. An Argo CD installed another way is never removed.
 
 To upgrade, upload the new jar over the old one. This keeps the settings and role permissions.
 Deleting the plugin and installing it again resets the permission on all roles.
@@ -85,8 +107,8 @@ nothing else: it cannot change Argo CD settings, projects or repositories.
 Leave *Expires In* empty for no expiry, or set one such as `90d`. Copy the token, Argo CD shows it only once.
 With the CLI: `argocd account generate-token --account morpheus`.
 
-**4. Use it in Morpheus.** *Administration > Integrations > Plugins*, edit **Argo CD**, paste the token into
-*Argo CD API token* and save. The Argo CD tab then shows `as morpheus` next to the connection.
+**4. Use it in Morpheus.** *Administration > Integrations > Argo CD*, *Connection* tab: type the Argo CD address,
+paste the token and save. The Argo CD tab then shows `as morpheus` next to the connection.
 
 ## Audit
 

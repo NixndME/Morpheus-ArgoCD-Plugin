@@ -4,7 +4,7 @@ import groovy.json.JsonOutput
 
 /**
  * One application's full detail view, pre-rendered so opening the app, closing it and clicking tree
- * nodes are instant CSS toggles (radio inputs) — no page reload, no JavaScript. Only real actions
+ * nodes are instant CSS toggles (radio inputs), no page reload, no JavaScript. Only real actions
  * (sync, delete, restart, create) go to the server.
  */
 class AppView {

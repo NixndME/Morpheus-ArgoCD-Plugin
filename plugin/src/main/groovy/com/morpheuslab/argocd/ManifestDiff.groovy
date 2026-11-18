@@ -57,7 +57,7 @@ class ManifestDiff {
         yaml(m).join('\n')
     }
 
-    /** A small YAML writer (maps, lists, scalars) — enough to read a manifest. */
+    /** A small YAML writer (maps, lists, scalars), enough to read a manifest. */
     static List<String> yaml(Object o, String indent = '') {
         List<String> out = []
         if (o instanceof Map) {

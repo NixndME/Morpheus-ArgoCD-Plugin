@@ -1,0 +1,207 @@
+<div class="acs" id="acs-top">
+<style>
+.acs{--t-text:var(--hpe-color-text-default,inherit);--t-strong:var(--hpe-color-text-strong,inherit);--t-weak:var(--hpe-color-text-weak,#7d8a94);
+ --t-line:var(--hpe-color-border-weak,rgba(125,138,148,.35));--t-line2:var(--hpe-color-border-default,rgba(125,138,148,.6));
+ --t-front:var(--hpe-color-background-front,transparent);--t-contrast:var(--hpe-color-background-contrast,rgba(125,138,148,.08));
+ --t-brand:var(--hpe-button-primary-rest-background,#008567);--t-onbrand:var(--hpe-button-primary-rest-textColor,#fff);
+ --t-crit:var(--hpe-color-border-critical,#cc1f1a);
+ --t-ok-bg:var(--hpe-color-background-ok,rgba(46,158,106,.15));--t-warn-bg:var(--hpe-color-background-warning,rgba(212,160,23,.18));
+ --t-crit-bg:var(--hpe-color-background-critical,rgba(208,70,79,.15));--t-info-bg:var(--hpe-color-background-info,rgba(47,127,193,.12));
+ --t-unknown-bg:var(--hpe-color-background-unknown,rgba(125,138,148,.12));
+ color:var(--t-text);font-size:14px;max-width:100%;overflow-x:hidden;margin-top:4px}
+.acs h3,.acs h4{text-transform:none;color:var(--t-strong);margin:0}
+.acs h3{font-size:18px;font-weight:600}
+.acs p{margin:0 0 10px}
+.acs>input[type=radio]{position:absolute;opacity:0;pointer-events:none;width:0;height:0}
+.acs-muted{color:var(--t-weak)}
+.acs-bar{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:0 0 12px}
+.acs-spacer{flex:1}
+.acs form{margin:0}
+.acs .acs-btn{display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;width:130px;height:32px;padding:0 14px;margin:0;border-radius:9999px;border:1px solid transparent;
+ font:500 14px/1 inherit;text-transform:none;white-space:nowrap;cursor:pointer;text-decoration:none}
+.acs .acs-btn-primary{background:var(--t-brand);color:var(--t-onbrand);font-weight:600}
+.acs .acs-btn-primary:hover{filter:brightness(.92)}
+.acs .acs-btn-secondary{background:var(--hpe-button-secondary-rest-background,rgba(125,138,148,.12));color:var(--hpe-button-secondary-rest-textColor,var(--t-strong))}
+.acs .acs-btn-secondary:hover{background:var(--t-line)}
+.acs .acs-btn-danger{background:transparent;color:var(--hpe-color-text-critical,#cc1f1a);border-color:var(--t-crit)}
+.acs-card{padding:18px 22px;border:1px solid var(--t-line);border-radius:12px;background:var(--t-front)}
+.acs-table{width:100%;border-collapse:collapse;margin:0}
+.acs-table th{text-align:left;font-weight:600;font-size:13px;color:var(--t-strong);padding:8px 12px;border-bottom:1px solid var(--t-line2);white-space:nowrap;text-transform:none;background:transparent!important}
+.acs-table td{padding:9px 12px;border-bottom:1px solid var(--t-line);vertical-align:middle;background:transparent!important}
+.acs-table tr{background:transparent!important}
+.acs-table tbody tr:hover td{background:var(--t-contrast)!important}
+.acs-name{font-weight:600;color:var(--t-strong)}
+.acs-small{display:block;font-size:12px;color:var(--t-weak)}
+.acs-empty{padding:16px;border:1px dashed var(--t-line2);border-radius:8px;color:var(--t-weak)}
+.acs-chip{display:inline-block;padding:2px 10px;border-radius:9999px;font-size:12px;font-weight:600;white-space:nowrap;color:var(--t-strong);border:1px solid transparent}
+.acs-chip-ok{background:var(--t-ok-bg);border-color:var(--hpe-color-decorative-brand,#01a982)}
+.acs-chip-warn{background:var(--t-warn-bg);border-color:var(--hpe-color-decorative-orange,#ffbc44)}
+.acs-chip-bad{background:var(--t-crit-bg);border-color:var(--t-crit)}
+.acs-chip-info{background:var(--t-info-bg);border-color:var(--hpe-color-decorative-blue,#00739d)}
+.acs-chip-unknown{background:var(--t-unknown-bg);border-color:var(--t-line2)}
+.acs-alert{padding:12px 16px;margin:0 0 16px;border-radius:8px;border-left:4px solid var(--t-line2);background:var(--t-info-bg);color:var(--t-strong)}
+.acs-alert-success{background:var(--t-ok-bg);border-left-color:var(--hpe-color-decorative-brand,#01a982)}
+.acs-alert-danger{background:var(--t-crit-bg);border-left-color:var(--t-crit)}
+.acs-alert-warning{background:var(--t-warn-bg);border-left-color:var(--hpe-color-decorative-orange,#ffbc44)}
+.acs-stats{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 6px}
+.acs-stat{padding:8px 14px;border:1px solid var(--t-line);border-radius:8px;min-width:130px;background:var(--t-front)}
+.acs-stat b{display:block;font-size:18px;color:var(--t-strong)}
+.acs-tabs{display:flex;gap:4px;border-bottom:1px solid var(--t-line2);margin:18px 0 16px}
+.acs-tabs label{margin:0 0 -1px;padding:9px 18px;font-weight:600;cursor:pointer;color:var(--t-weak);border-bottom:3px solid transparent}
+.acs-tabs label:hover{color:var(--t-strong)}
+.acs-tabs .acs-chip{margin-left:6px;font-size:11px;padding:0 8px}
+.acs-sub{display:none}
+#acs-s-clusters:checked~.acs-tabs label[for=acs-s-clusters],#acs-s-connection:checked~.acs-tabs label[for=acs-s-connection],
+#acs-s-activity:checked~.acs-tabs label[for=acs-s-activity]{color:var(--t-strong);border-bottom-color:var(--t-brand)}
+#acs-s-clusters:checked~.acs-subs .acs-sub-clusters,#acs-s-connection:checked~.acs-subs .acs-sub-connection,
+#acs-s-activity:checked~.acs-subs .acs-sub-activity{display:block}
+.acs-form{display:grid;grid-template-columns:repeat(2,minmax(220px,1fr));gap:14px 18px;max-width:860px}
+.acs-form label{display:block;font-size:12px;font-weight:600;color:var(--t-strong);margin:0 0 4px}
+.acs-hint{display:block;font-size:12px;color:var(--t-weak);font-weight:normal;margin-top:3px}
+.acs input[type=text],.acs input[type=password],.acs select.acs-select{width:100%;box-sizing:border-box;height:34px;padding:4px 10px;border:1px solid var(--t-line2);border-radius:6px;background:var(--t-front);color:var(--t-strong)}
+.acs select.acs-select option{color:#1f2428}
+.acs input::placeholder{color:var(--t-weak);opacity:.55;font-style:italic}
+.acs .acs-check{display:flex;gap:8px;align-items:center;font-weight:normal;margin:4px 0}
+.acs-test{margin:16px 0 0;font-size:13px}
+.acs form.acs-pop,.acs-pop{position:fixed;inset:0;margin:auto;width:min(440px,92vw);height:fit-content;box-sizing:border-box;padding:18px;border:1px solid var(--t-line2);border-radius:12px;background:var(--hpe-color-background-front,#2b3036);color:var(--t-text);box-shadow:0 6px 18px rgba(0,0,0,.35)}
+.acs-pop::backdrop{background:rgba(0,0,0,.4)}
+.acs-popwide{width:min(640px,94vw)}
+.acs-pop h3{margin:0 0 6px}
+.acs-popbtns{display:flex;gap:10px;margin-top:16px}
+.acs-log{font:12px/1.5 monospace;height:4.6em;overflow:auto;white-space:pre;margin:14px 0 0;padding:6px 10px;border-radius:6px;background:#1f2428;color:#d6dde2;cursor:pointer}
+.acs-log.acs-big{height:24em}
+.acs-actions{display:flex;gap:8px;flex-wrap:nowrap;align-items:center;justify-content:flex-end}
+.acs-found{margin:0 0 14px;padding:10px 14px;border-radius:8px;background:var(--t-info-bg);border-left:4px solid var(--hpe-color-decorative-blue,#00739d)}
+.acs-login{display:grid;grid-template-columns:120px 1fr;gap:6px 14px;margin:10px 0 0}
+.acs-login code{font-size:13px}
+.acs details summary{cursor:pointer;color:var(--t-brand);font-weight:600}
+.acs .acs-section{margin:26px 0 0}
+</style>
+
+<div class="acs-bar">
+  <h3>Argo CD</h3>
+  <span class="acs-spacer"></span>
+  <span class="acs-muted">Bundled Argo CD <b>{{bundled}}</b></span>
+</div>
+
+{{#if hasFlash}}<div class="acs-alert acs-alert-{{flashLevel}}">{{flashText}}</div>{{/if}}
+{{#if error}}<div class="acs-alert acs-alert-danger">{{error}}</div>{{/if}}
+
+{{#unless admin}}{{#unless accessUnknown}}<div class="acs-empty">You need the Argo CD Admin permission to use this page. Ask an administrator to add it to your role.</div>{{/unless}}{{/unless}}
+
+{{#if admin}}
+{{#if running}}<div class="acs-alert">A job is running. This page does not refresh by itself. <a href="/admin/integrations/{{integrationId}}">Reload</a> to follow it.</div>{{/if}}
+
+<div class="acs-stats">
+  <div class="acs-stat"><span class="acs-muted">HKS clusters</span><b>{{clusterCount}}</b></div>
+  <div class="acs-stat"><span class="acs-muted">Installed by this plugin</span><b>{{installedCount}}</b></div>
+  <div class="acs-stat"><span class="acs-muted">Connected</span><b>{{connectedText}}</b></div>
+</div>
+
+<input type="radio" name="acs-sub" id="acs-s-clusters" {{#if subClusters}}checked{{/if}}/>
+<input type="radio" name="acs-sub" id="acs-s-connection" {{#if subConnection}}checked{{/if}}/>
+<input type="radio" name="acs-sub" id="acs-s-activity" {{#if subActivity}}checked{{/if}}/>
+
+<div class="acs-tabs">
+  <label for="acs-s-clusters">Clusters</label>
+  <label for="acs-s-connection">Connection<span class="acs-chip acs-chip-{{connection.chip}}">{{connection.status}}</span></label>
+  <label for="acs-s-activity">Activity</label>
+</div>
+
+<div class="acs-subs">
+
+<div class="acs-sub acs-sub-clusters"><div class="acs-card">
+  {{#if connected}}{{#unless canInstallAny}}<div class="acs-found">This integration uses the Argo CD at <b>{{settingsUrl}}</b>. To manage another Argo CD, add one more Argo CD integration.</div>{{/unless}}{{/if}}
+  {{#if hasClusters}}
+  <table class="acs-table">
+    <thead><tr><th>Cluster</th><th>Argo CD</th><th>Version</th><th>Used by this integration</th><th></th></tr></thead>
+    <tbody>
+    {{#each clusters}}
+    <tr>
+      <td><span class="acs-name">{{name}}</span></td>
+      <td><span class="acs-chip acs-chip-{{chip}}">{{status}}</span>{{#if detail}}<span class="acs-small">{{detail}}</span>{{/if}}</td>
+      <td class="acs-muted">{{version}}</td>
+      <td>{{#if inUse}}Yes{{/if}}</td>
+      <td>
+        <div class="acs-actions">
+        {{#if inUse}}<a class="acs-btn acs-btn-secondary" href="{{url}}">Open</a>{{/if}}
+        {{#if canConnect}}
+          <form method="post" action="/plugin/argocd/setup/connect"><input type="hidden" name="{{../csrfParam}}" value="{{../csrfToken}}"/><input type="hidden" name="integrationId" value="{{../integrationId}}"/><input type="hidden" name="clusterId" value="{{id}}"/>
+            <button type="submit" class="acs-btn acs-btn-primary">Connect</button></form>
+        {{/if}}
+        {{#if canInstall}}
+          <button type="button" class="acs-btn acs-btn-primary" popovertarget="acs-in-{{id}}">Install</button>
+          <form id="acs-in-{{id}}" popover class="acs-pop" method="post" action="/plugin/argocd/setup/install">
+            <h3>Install Argo CD on {{name}}?</h3>
+            <p style="margin-top:8px">Adds Argo CD {{../bundled}} in namespace argocd and opens port 30443 on the nodes. When it is ready, this integration uses it.</p>
+            <input type="hidden" name="{{../csrfParam}}" value="{{../csrfToken}}"/><input type="hidden" name="integrationId" value="{{../integrationId}}"/><input type="hidden" name="clusterId" value="{{id}}"/>
+            <div class="acs-popbtns"><button type="submit" class="acs-btn acs-btn-primary">Install</button><button type="button" class="acs-btn acs-btn-secondary" popovertarget="acs-in-{{id}}" popovertargetaction="hide">Cancel</button></div>
+          </form>
+        {{/if}}
+        {{#if canRemove}}
+          <button type="button" class="acs-btn acs-btn-danger" popovertarget="acs-rm-{{id}}">Remove</button>
+          <form id="acs-rm-{{id}}" popover class="acs-pop" method="post" action="/plugin/argocd/setup/remove">
+            <h3>Remove Argo CD from {{name}}?</h3>
+            <p style="margin-top:8px">Apps it deployed keep running, but Argo CD stops managing them. Their Argo CD settings are deleted.</p>
+            <input type="hidden" name="{{../csrfParam}}" value="{{../csrfToken}}"/><input type="hidden" name="integrationId" value="{{../integrationId}}"/><input type="hidden" name="clusterId" value="{{id}}"/>
+            <div class="acs-form" style="grid-template-columns:1fr"><div><label for="acs-rmc-{{id}}">Type the cluster name</label><input type="text" id="acs-rmc-{{id}}" name="confirm" required pattern="{{confirmPattern}}" placeholder="{{name}}" autocomplete="off"/></div></div>
+            <div class="acs-popbtns"><button type="submit" class="acs-btn acs-btn-danger">Remove</button><button type="button" class="acs-btn acs-btn-secondary" popovertarget="acs-rm-{{id}}" popovertargetaction="hide">Cancel</button></div>
+          </form>
+        {{/if}}
+        </div>
+      </td>
+    </tr>
+    {{/each}}
+    </tbody>
+  </table>
+  {{else}}
+  <div class="acs-empty">No HKS clusters. Build one under Infrastructure, Clusters, or connect to an Argo CD you have under Connection.</div>
+  {{/if}}
+</div></div>
+
+<div class="acs-sub acs-sub-connection"><div class="acs-card">
+  <div class="acs-bar"><h4>Connection</h4><span class="acs-chip acs-chip-{{connection.chip}}">{{connection.status}}</span><span class="acs-muted">{{connection.text}}</span></div>
+
+  {{#if hasAdminLogin}}
+  <div class="acs-section">
+    <h4>Argo CD login</h4>
+    <div class="acs-login">
+      <span class="acs-muted">Address</span><span><a href="{{adminLogin.url}}" target="_blank" rel="noopener">{{adminLogin.url}}</a></span>
+      <span class="acs-muted">User</span><span><code>{{adminLogin.user}}</code></span>
+      <span class="acs-muted">Password</span><span>{{#if adminLogin.password}}<details><summary>Show</summary><code>{{adminLogin.password}}</code></details>{{else}}Changed in Argo CD, not shown here{{/if}}</span>
+    </div>
+    <p class="acs-hint" style="margin-top:8px">Change the password in Argo CD under User Info. The browser warns about the certificate the first time.</p>
+  </div>
+  {{/if}}
+
+  <form class="acs-section" method="post" action="/plugin/argocd/setup/save" autocomplete="off">
+    <h4>Use an Argo CD you already have</h4>
+    <p class="acs-muted" style="margin-top:4px">Needs an Argo CD account with an API token. The plugin tests it before saving.</p>
+    <input type="hidden" name="{{csrfParam}}" value="{{csrfToken}}"/><input type="hidden" name="integrationId" value="{{integrationId}}"/>
+    <div class="acs-form">
+      <div><label for="acs-url">Argo CD address</label><input type="text" id="acs-url" name="url" value="{{settingsUrl}}" placeholder="https://argocd.example.com" required/></div>
+      <div><label for="acs-token">API token</label><input type="password" id="acs-token" name="token" placeholder="{{#if settingsUrl}}Empty keeps the saved token{{else}}Paste the token{{/if}}"/></div>
+      <div><label for="acs-project">Default project</label><input type="text" id="acs-project" name="project" value="{{defaultProject}}"/></div>
+      <div><label>&nbsp;</label><label class="acs-check"><input type="checkbox" name="verifyTls" value="on" {{#if verifyTls}}checked{{/if}}/>Check the certificate</label><span class="acs-hint">Turn off for a self-signed certificate.</span></div>
+    </div>
+    <div class="acs-popbtns"><button type="submit" class="acs-btn acs-btn-primary">Save</button>
+      {{#if settingsUrl}}<button type="button" class="acs-btn acs-btn-danger" popovertarget="acs-disc">Disconnect</button>{{/if}}</div>
+  </form>
+  {{#if settingsUrl}}
+  <form id="acs-disc" popover class="acs-pop" method="post" action="/plugin/argocd/setup/disconnect">
+    <h3>Disconnect the plugin?</h3>
+    <p style="margin-top:8px">The plugin forgets the Argo CD address and token. Argo CD keeps running. To connect again you need the token, or Connect on a cluster where this plugin installed Argo CD.</p>
+    <input type="hidden" name="{{csrfParam}}" value="{{csrfToken}}"/><input type="hidden" name="integrationId" value="{{integrationId}}"/>
+    <div class="acs-popbtns"><button type="submit" class="acs-btn acs-btn-danger">Disconnect</button><button type="button" class="acs-btn acs-btn-secondary" popovertarget="acs-disc" popovertargetaction="hide">Cancel</button></div>
+  </form>
+  {{/if}}
+</div></div>
+
+<div class="acs-sub acs-sub-activity"><div class="acs-card">
+  <div class="acs-bar"><h4>Activity</h4><span class="acs-spacer"></span><a href="/admin/integrations/{{integrationId}}">Reload</a></div>
+  {{#if hasLog}}<pre class="acs-log acs-big">{{logText}}</pre>{{else}}<div class="acs-empty">Nothing yet. Install and remove steps show here.</div>{{/if}}
+</div></div>
+
+</div>
+{{/if}}
+</div>

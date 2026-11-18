@@ -16,6 +16,9 @@ class ArgoCdPlugin extends Plugin {
     /** View apps and status. `full` additionally allows sync / refresh / create / delete. */
     static final String PERMISSION_APPS = 'argocd-apps'
 
+    /** Install or remove Argo CD on HKS clusters, set the connection, see the admin password. */
+    static final String PERMISSION_ADMIN = 'argocd-admin'
+
     @Override
     String getCode() { 'argocd' }
 
@@ -63,9 +66,13 @@ class ArgoCdPlugin extends Plugin {
         Permission apps = Permission.build('Argo CD Applications', PERMISSION_APPS,
             [Permission.AccessType.none, Permission.AccessType.read, Permission.AccessType.full])
         apps.subCategory = 'Argo CD'   // the section name in Roles; blank otherwise
-        setPermissions([apps])
+        Permission admin = Permission.build('Argo CD Admin', PERMISSION_ADMIN, [Permission.AccessType.none, Permission.AccessType.full])
+        admin.subCategory = 'Argo CD'
+        setPermissions([apps, admin])
         registerProvider(new ArgoCdClusterTabProvider(this, morpheus))
+        registerProvider(new ArgoCdIntegrationProvider(this, morpheus))
         controllers.add(new ArgoCdController(this, morpheus))
+        controllers.add(new ArgoCdSetupController(this, morpheus))
     }
 
     /** Exposed for the controller, which renders its own pages. */
